@@ -1,0 +1,22 @@
+# VS
+
+*.sdf
+*.opensdf
+*.suo
+*.vcxproj.user
+
+# VS build
+
+*.pdb
+*.obj
+*.lastbuildstate
+*.log
+*.tlog
+*.idb
+src/ipch/
+debug
+*.ilk
+*.intermediate.manifest
+*.unsuccessfulbuild
+
+# Other
