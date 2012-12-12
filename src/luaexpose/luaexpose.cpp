@@ -14,6 +14,51 @@ using std::vector;
 
 #include "lua\lua.hpp"
 
+#include "LuaContext.h"
+
+LuaContext g_lua;
+
+class Testc
+{
+public:
+	Testc(){}
+};
+
+
+LUA_CLASSCONSTRUCTOR(Testc);
+
+static int luaTestcNew( lua_State*L)
+{
+	return 1;
+}
+
+static int luaTestcDestroy( lua_State*L)
+{
+	Testc *inst = lua_convertUserdataForTestc( g_lua );
+
+	return 1;
+}
+
+int main( int, char ** )
+{
+	g_lua.init();
+	g_lua.loadScript("core.lua");
+	
+	LUA_CLASSDESCBEGIN( Testc )
+		LUA_CLASSDESCADD( "new",	luaTestcNew )
+		LUA_CLASSDESCADD( "__gc",	luaTestcDestroy )
+	LUA_CLASSDESCEND
+
+	LUA_CLASSDESCAPPLY(Testc)
+
+	g_lua.run();
+	printf("%s\n", g_lua.errorString());
+	g_lua.destroy();
+
+	return 0;
+}
+
+
 namespace LuaExpose
 {
 	#include "MyVec.h"
@@ -240,7 +285,8 @@ void luaexposeCleanup()
 	g_points.clear();
 }
 
-int main( int argc, char **argv )
+//int main( int argc, char **argv )
+int main2( int argc, char **argv )
 {
 	//#include <Windows.h>
 	//SetConsoleTitle("luaexpose debug");

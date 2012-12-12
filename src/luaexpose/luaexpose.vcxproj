@@ -77,10 +77,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="LuaContext.cpp" />
     <ClCompile Include="MyVec.cpp" />
     <ClCompile Include="luaexpose.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LuaContext.h" />
     <ClInclude Include="MyVec.h" />
     <ClInclude Include="Vec2.inl" />
     <ClInclude Include="lua\lauxlib.h" />
