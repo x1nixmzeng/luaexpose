@@ -9,6 +9,9 @@ using std::vector;
 #include <algorithm>
 
 #include "GL\glut.h"
+
+#define LUA_COMPAT_ALL
+
 #include "lua\lua.hpp"
 
 namespace LuaExpose
@@ -33,6 +36,92 @@ typedef vector<vertex >				pointList;
 Vec3f lastColour( 0.9f );
 
 pointList g_points;
+
+
+// From a Lua C++ binding example
+// See https://gist.github.com/1594905
+
+class Foo
+{
+	const char *m_name;
+
+	public:
+		Foo( const char *name )
+			: m_name( name )
+		{
+			printf("Foo is born\n");
+		}
+
+		int Add(int a, int b)
+		{
+			return( a+b );
+		}
+
+		~Foo( )
+		{
+			printf("Foo %s has gone!\n", m_name );
+		}
+};
+
+int l_Foo_constructor(lua_State * l)
+{
+	 const char * name = luaL_checkstring(l, 1);
+
+	Foo ** udata = (Foo **)lua_newuserdata(l, sizeof(Foo *));
+	*udata = new Foo(name);
+
+	luaL_getmetatable(l, "luaL_Foo");
+	lua_setmetatable(l, -2);
+
+	return 1;
+}
+
+Foo * l_CheckFoo(lua_State * l, int n)
+{
+	 return *(Foo **)luaL_checkudata(l, n, "luaL_Foo");
+}
+
+int l_Foo_add(lua_State * l)
+{
+	Foo * foo = l_CheckFoo(l, 1);
+
+	int a = luaL_checknumber(l, 2);
+	int b = luaL_checknumber(l, 3);
+
+	lua_pushnumber( l, foo->Add( a, b ) );
+
+	return 1;
+}
+
+int l_Foo_destructor(lua_State * l)
+{
+	Foo * foo = l_CheckFoo(l, 1);
+	delete foo;
+
+	return 0;
+}
+
+extern "C"
+{
+	luaL_Reg sFooRegs[] =
+	{
+		{ "new", l_Foo_constructor },
+		{ "add", l_Foo_add },
+		{ "__gc", l_Foo_destructor },
+		{ NULL, NULL }
+	};
+
+	void registerSprite(lua_State *l)
+	{
+		luaL_newmetatable(l, "luaL_Foo");
+		luaL_register(l, NULL, sFooRegs);
+		lua_pushvalue(l, -1);
+		lua_setfield(l, -1, "__index");
+		lua_setglobal(l, "Foo");
+	}
+
+
+}
 
 static int pushVertex( lua_State *L )
 {
@@ -142,11 +231,19 @@ void callbackKeyboard(unsigned char, int, int);
 
 #define LUA_SETGLOBALSTRING(L,name,val)lua_pushstring(L,val);lua_setglobal(L,name)
 
-#include <Windows.h>
+void luaexposeCleanup()
+{
+	printf("Session ending\n\n");
+	
+
+	lua_close( g_context );
+	g_points.clear();
+}
 
 int main( int argc, char **argv )
 {
-	SetConsoleTitle("luaexpose debug");
+	//#include <Windows.h>
+	//SetConsoleTitle("luaexpose debug");
 
 	glutInit(&argc,argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
@@ -165,6 +262,8 @@ int main( int argc, char **argv )
 	luaL_openlibs( g_context ) ; // math, etc
 	//luaopen_math( g_context );
 
+	registerSprite( g_context );
+
 	lua_register( g_context, "pushVtx", pushVertex );
 	lua_register( g_context, "getVtx", getVertex );
 	lua_register( g_context, "setVtxColour", setColour );
@@ -173,11 +272,14 @@ int main( int argc, char **argv )
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
 	gluOrtho2D(0,800,600,0);
 
+	callbackKeyboard('r',0,0);
+
+
+	// We need to define an exit call to clear our memory correctly
+	atexit( luaexposeCleanup );
+
+
 	glutMainLoop();
-
-	lua_close( g_context );
-	g_points.clear();
-
 	return 0;
 }
 
@@ -200,6 +302,8 @@ void callbackKeyboard(unsigned char keycode, int, int)
 			if( !( lua_pcall( g_context, 0, 0, 0 ) == 0 ) )
 			{
 				printf("ERROR: %s\n", lua_tostring( g_context, -1 ) );
+
+				//OutputDebugString( lua_tostring( g_context, -1 ) );
 			}
 			else
 			{
