@@ -14,13 +14,15 @@ using std::vector;
 namespace LuaExpose
 {
 	#include "MyVec.h"
+
+	const char *ScriptName = "expose.lua";
 };
 
 using namespace LuaExpose::Vectors;
 
 lua_State *g_context;
 
-const char *g_luascript = "expose.lua";
+
 
 #define asFloat(x)	x/255.0f
 
@@ -57,6 +59,52 @@ static int setColour( lua_State *L )
 	lastColour.xyz[2] = b;
 
 	lua_pop(L,3);
+
+	return 0;
+}
+
+bool luaGetVec2( lua_State *L )
+{
+	luaL_checktype(L, 1, LUA_TTABLE);
+
+	lua_pushnil(L);
+
+	// TODO: Determine if there are 2 nodes here and use them without the loop
+	
+	Vec2f demo;
+	int i(0);
+
+	while( lua_next(L, -2) != 0 )
+	{
+		if( lua_isnumber( L, -1 ) )
+		{
+			if( i == 0 )
+				demo.x = lua_tonumber( L, -1 );
+			if( i == 1 )
+				demo.y = lua_tonumber( L, -1 );
+		}
+
+		lua_pop(L, 1);
+		++i;
+	}
+
+	g_points.push_back( vertex( demo, lastColour ) );
+
+	return( true );
+}
+
+static int setVertexBuffer( lua_State *L )
+{
+	luaL_checktype(L, 1, LUA_TTABLE);
+
+	lua_pushnil(L);
+
+    while( lua_next(L, -2) != 0 )
+	{
+		luaGetVec2( L );
+
+		lua_pop(L, 1);
+	}
 
 	return 0;
 }
@@ -120,6 +168,7 @@ int main( int argc, char **argv )
 	lua_register( g_context, "pushVtx", pushVertex );
 	lua_register( g_context, "getVtx", getVertex );
 	lua_register( g_context, "setVtxColour", setColour );
+	lua_register( g_context, "pushVtxBuffer", setVertexBuffer ); // array of Vec2s
 
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
 	gluOrtho2D(0,800,600,0);
@@ -138,7 +187,7 @@ void callbackKeyboard(unsigned char keycode, int, int)
 	{
 		printf("Reloading script..\n");
 
-		if( !( luaL_loadfile( g_context, g_luascript ) == 0 ) )
+		if( !( luaL_loadfile( g_context, LuaExpose::ScriptName ) == 0 ) )
 		{
 			printf("ERROR: %s\n", lua_tostring( g_context, -1 ) );
 		}

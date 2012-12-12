@@ -3,6 +3,23 @@
 -- v0.01
 -----------------------------------------------------------------
 
+--> Demo scripts
+
+require "Vec2"
+
+vertexBuffer = {}
+
+-- Points at the edges of the screen
+table.insert( vertexBuffer, Vec2Origin )
+table.insert( vertexBuffer, Vec2:new( 800, 0 ) )
+table.insert( vertexBuffer, Vec2:new( 800, 600 ) )
+table.insert( vertexBuffer, Vec2:new( 0, 600 ) )
+
+setVtxColour( 1, 0, 0 )
+
+pushVtxBuffer( vertexBuffer )
+
+setVtxColour( 0.9, 0.9, 0.9 )
 
 -----------------------------------------------------------------
 --> We can output messages to the console window

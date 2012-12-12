@@ -16,6 +16,9 @@
     <Filter Include="Header Files\lua">
       <UniqueIdentifier>{e50a9013-145d-47fa-ad72-d0ac5bdffccd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\lua">
+      <UniqueIdentifier>{bcfe18f8-6201-45fa-91cb-f5f01cef4ede}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="luaexpose.cpp">
@@ -49,11 +52,14 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="expose.lua">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="Vec3.inl">
       <Filter>Header Files</Filter>
+    </None>
+    <None Include="expose.lua">
+      <Filter>Source Files\lua</Filter>
+    </None>
+    <None Include="Vec2.lua">
+      <Filter>Source Files\lua</Filter>
     </None>
   </ItemGroup>
 </Project>

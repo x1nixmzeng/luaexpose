@@ -91,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="expose.lua" />
+    <None Include="Vec2.lua" />
     <None Include="Vec3.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
