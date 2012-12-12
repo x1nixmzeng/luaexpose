@@ -49,7 +49,7 @@ class Foo
 		Foo( const char *name )
 			: m_name( name )
 		{
-			printf("Foo is born\n");
+			printf("Foo %s is born\n", m_name);
 		}
 
 		int Add(int a, int b)
@@ -65,7 +65,7 @@ class Foo
 
 int l_Foo_constructor(lua_State * l)
 {
-	 const char * name = luaL_checkstring(l, 1);
+	const char * name = luaL_checkstring(l, 1);
 
 	Foo ** udata = (Foo **)lua_newuserdata(l, sizeof(Foo *));
 	*udata = new Foo(name);
@@ -114,7 +114,7 @@ extern "C"
 	void registerSprite(lua_State *l)
 	{
 		luaL_newmetatable(l, "luaL_Foo");
-		luaL_register(l, NULL, sFooRegs);
+		luaL_register(l, 0, sFooRegs);
 		lua_pushvalue(l, -1);
 		lua_setfield(l, -1, "__index");
 		lua_setglobal(l, "Foo");
@@ -288,6 +288,25 @@ void callbackKeyboard(unsigned char keycode, int, int)
 	if( keycode == 'r' )
 	{
 		printf("Reloading script..\n");
+		lua_close( g_context );
+
+		printf("Creating new context\n");
+
+	g_context = luaL_newstate();
+	
+	LUA_SETGLOBALSTRING( g_context, "LUAEXPOSE_DESC", "LuaExpose v0.01" );
+
+	luaL_openlibs( g_context ) ; // math, etc
+	//luaopen_math( g_context );
+
+	registerSprite( g_context );
+
+	lua_register( g_context, "pushVtx", pushVertex );
+	lua_register( g_context, "getVtx", getVertex );
+	lua_register( g_context, "setVtxColour", setColour );
+	lua_register( g_context, "pushVtxBuffer", setVertexBuffer ); // array of Vec2s
+
+
 
 		if( !( luaL_loadfile( g_context, LuaExpose::ScriptName ) == 0 ) )
 		{
