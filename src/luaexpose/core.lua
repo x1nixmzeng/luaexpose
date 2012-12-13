@@ -2,12 +2,15 @@
 
 print("Hello from ", LUAEXPOSEDESC, "!")
 
-buf = {}
+t = sampleTable()
 
-for i=100,500,20 do
-	--table.insert(buf, {0,i})
-	--table.insert(buf, {i,0})
-	table.insert(buf, {i,i})
+for i=1, #t do
+	print(t[i])
 end
 
-pushVtxBuffer( buf )
+print("result = ", #t)
+
+print("size of 1x   u32 = ", u32:size())
+print("size of 1x   u8  = ", u8:size())
+print("size of 80x  u32 = ", u32:size(80))
+print("size of 160x u8  = ", u8:size(160))

@@ -57,6 +57,14 @@ static int myPrint( lua_State *L )
 	return 0;
 }
 
+#include "exposedTypes.hpp"
+
+void setupExposedTypes()
+{
+	lua.setClassHook("u32", u32methods);
+	lua.setClassHook("u8",	u8methods);
+}
+
 static int pushVertex( lua_State *L )
 {
 	float x = lua_tonumber(L, -2);
@@ -161,6 +169,21 @@ static int getVertex( lua_State *L )
 }
 
 
+static int sampleTablePush( lua_State *L )
+{
+	LuaContextBase l(L);
+
+	lua_createtable(L, 3, 0);
+	int newTable = lua_gettop(L);
+    int index = 1;
+
+	l.push( 100 );		lua_rawseti(L, newTable, index++);
+	l.push( 101 );		lua_rawseti(L, newTable, index++);
+	l.push( 102 );		lua_rawseti(L, newTable, index++);
+
+	return 1;
+}
+
 bool LuaExposeSetup()
 {
 	printf("> Creating new session\n");
@@ -191,11 +214,6 @@ bool LuaExposeSetup()
 			(and actual rendering of points/lines/polys)
 
 	*/
-	lua.setGlobal( "CUR_DIR",			"C:/" );
-	lua.setGlobal( "CUR_FILE",			"C:/rip_002B1B80.dat" );
-	lua.setGlobal( "CUR_FILENAME",		"rip_002B1B80" );
-	lua.setGlobal( "CUR_FILEEXT",		"dat" );
-	lua.setGlobal( "CUR_FILESIZE",		1024 );
 
 	if( !( lua.loadScript( BaseScript ) ) )
 	{
@@ -203,11 +221,15 @@ bool LuaExposeSetup()
 		return( false );
 	}
 
+	lua.setHook("sampleTable", sampleTablePush );
+
 	lua.setHook("print",		myPrint );
 	lua.setHook("pushVtx",		pushVertex );
 	lua.setHook("getVtx",		getVertex );
 	lua.setHook("setVtxColour",	setColour );
 	lua.setHook("pushVtxBuffer",setVertexBuffer );
+
+	setupExposedTypes();
 
 	return( true );
 }

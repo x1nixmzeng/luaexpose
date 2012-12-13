@@ -83,6 +83,7 @@
     <ClCompile Include="luaexpose.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="exposedTypes.hpp" />
     <ClInclude Include="LuaContext.h" />
     <ClInclude Include="LuaContextBase.h" />
     <ClInclude Include="MyVec.h" />

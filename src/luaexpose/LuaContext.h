@@ -2,9 +2,7 @@
 	LuaContext
 	Written by x1nixmzeng
 
-	Encapsulated Lua state to allow for C++ methods
-
-	>> NOTE: Attempting to create static C functions for C++ classes using templates
+	Additional encapsulation to aid creating a new context
 */
 #ifndef _H_LUACONTEXT_
 #define _H_LUACONTEXT_

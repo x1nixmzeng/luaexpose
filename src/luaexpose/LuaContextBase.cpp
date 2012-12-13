@@ -19,7 +19,7 @@ float LuaContextBase::getNumberFromStack( int stackPos )
 {
 	// Get a number from a stack position
 
-	return( lua_tonumber( m_L, stackPos ) );
+	return( static_cast<float>( lua_tonumber( m_L, stackPos ) ) );
 }
 
 int LuaContextBase::getIntegerFromStack( int stackPos )
