@@ -15,6 +15,7 @@ using std::vector;
 #include "lua\lua.hpp"
 
 #include "MyVec.h"
+#include "LuaContextBase.h"
 #include "LuaContext.h"
 
 LuaContext lua;
@@ -33,6 +34,28 @@ Vec3f lastColour( 0.9f );
 
 pointList g_points;
 
+static int myPrint( lua_State *L )
+{
+	int args = lua_gettop(L);
+
+	if( args > 0 )
+	{
+		LuaContextBase tmpLua( L );
+
+		printf("Script > ");
+
+		// It looks like numbers are converted to strings anyway..
+		// Also due to the stack, things are pushed in reverse order.. (fixed)
+
+		for( int i = args; i > 0; --i )
+			printf( "%s", tmpLua.getStringFromStack( -i ) );
+
+		printf("\n");
+
+	}
+
+	return 0;
+}
 
 static int pushVertex( lua_State *L )
 {
@@ -154,6 +177,7 @@ bool LuaExposeSetup()
 		return( false );
 	}
 
+	lua.setHook("print",		myPrint );
 	lua.setHook("pushVtx",		pushVertex );
 	lua.setHook("getVtx",		getVertex );
 	lua.setHook("setVtxColour",	setColour );
@@ -203,9 +227,9 @@ int main( int argc, char **argv )
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
 	gluOrtho2D(0,800,600,0);
 
-	LuaExposeSetup()
-		? lua.run()
-		: printf("ERROR: %s\n", lua.errorString() );
+	if( LuaExposeSetup() )
+		if( !( lua.run() ) )
+			printf("ERROR: %s\n", lua.errorString() );
 
 	// We need to define an exit call to clear our memory correctly
 	atexit( LuaExposeSetupCleanup );
@@ -218,9 +242,9 @@ void callbackKeyboard(unsigned char keycode, int, int)
 {
 	if( keycode == 'r' )
 	{
-		LuaExposeReload()
-			? lua.run()
-			: printf("ERROR: %s\n", lua.errorString() );
+		if( LuaExposeReload() )
+			if( !( lua.run() ) )
+				printf("ERROR: %s\n", lua.errorString() );
 		
 		// Update screen after new data
 		glutPostRedisplay();

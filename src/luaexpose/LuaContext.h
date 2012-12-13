@@ -9,17 +9,11 @@
 #ifndef _H_LUACONTEXT_
 #define _H_LUACONTEXT_
 
-#define LUA_COMPAT_ALL
-#include "lua\lua.hpp"
-
-#include <string>
-using std::string;
+#include "LuaContextBase.h"
 
 class LuaContext
+	: public LuaContextBase
 {
-	lua_State* m_L;
-	bool m_running;
-
 public:
 	LuaContext( );
 	~LuaContext( );
@@ -45,23 +39,6 @@ public:
 	void setGlobal( const char *, float );			// 
 	void setGlobal( const string &, int );			// integer
 	void setGlobal( const char *, int );			// 
-	
-	void pop( );
-
-	void push( const string& );	// string
-	void push( const char * );	// string
-	void push( float );			// number
-	void push( int );			// integer
-	void push( );				// nil
-
-	void assertString( );
-	void assertNumber( );
-	void assertTable( );
-
-	const char *errorString( );
-
-	void exception( const string & );
-	void exception( const char * );
 };
 
 /*
