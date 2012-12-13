@@ -15,46 +15,53 @@
 #include <string>
 using std::string;
 
-typedef lua_State* luaSandbox;
-
 class LuaContext
 {
-	luaSandbox m_L;
+	lua_State* m_L;
 	bool m_running;
+
 public:
 	LuaContext( );
 	~LuaContext( );
 
-	luaSandbox &fetchContext( ){ return( m_L ); }
+	lua_State *getContext(){ return m_L; }
+	inline bool hasInit( ) const;
 
 	void init( );
 	void destroy( );
 
+	bool loadScript( const string & );
 	bool loadScript( const char * );
 	bool run( );
 
+	void setHook( const string &, lua_CFunction );
 	void setHook( const char *, lua_CFunction );
+	void setClassHook( const string &, luaL_Reg * );
 	void setClassHook( const char *, luaL_Reg * );
 
-	void setGlobal( const char *, const char * );	// string
-	void setGlobal( const char *, float );			// number
-	void setGlobal( const char *, int );			// integer
+	void setGlobal( const string &, const char * );	// string
+	void setGlobal( const char *, const char * );	// 
+	void setGlobal( const string &, float );		// number
+	void setGlobal( const char *, float );			// 
+	void setGlobal( const string &, int );			// integer
+	void setGlobal( const char *, int );			// 
 	
 	void pop( );
+
 	void push( const string& );	// string
 	void push( const char * );	// string
 	void push( float );			// number
 	void push( int );			// integer
-	void push( );				// nil value
+	void push( );				// nil
 
+	void assertString( );
+	void assertNumber( );
 	void assertTable( );
 
 	const char *errorString( );
 
-	/*
-		NOTE: This should only be called from hooked functions
-	*/
-	void assert( bool, const char * = nullptr );
+	void exception( const string & );
+	void exception( const char * );
 };
 
 /*
@@ -74,12 +81,5 @@ public:
 #define LUA_CLASSDESCEND		{NULL,NULL} };
 #define LUA_CLASSDESCADD(n,c)	{ n, c },
 #define LUA_CLASSDESCAPPLY(c)	g_lua.setClassHook(#c, sLuaClass_##c);
-
-// no need to use templates ..
-#define LUA_CLASSCONSTRUCTOR(T) \
-	T *lua_convertUserdataFor##T( LuaContext &luaContext ) \
-	{ \
-		return *(T **)luaL_checkudata( luaContext.fetchContext(), 1, "luaL_"#T ); \
-	}
 
 #endif

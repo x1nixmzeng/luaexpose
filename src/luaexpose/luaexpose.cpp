@@ -14,66 +14,17 @@ using std::vector;
 
 #include "lua\lua.hpp"
 
+#include "MyVec.h"
 #include "LuaContext.h"
 
-LuaContext g_lua;
+LuaContext lua;
 
-class Testc
-{
-public:
-	Testc(){}
-};
+const char *BaseScript = "core.lua";
 
 
-LUA_CLASSCONSTRUCTOR(Testc);
-
-static int luaTestcNew( lua_State*L)
-{
-	return 1;
-}
-
-static int luaTestcDestroy( lua_State*L)
-{
-	Testc *inst = lua_convertUserdataForTestc( g_lua );
-
-	return 1;
-}
-
-int main( int, char ** )
-{
-	g_lua.init();
-	g_lua.loadScript("core.lua");
-	
-	LUA_CLASSDESCBEGIN( Testc )
-		LUA_CLASSDESCADD( "new",	luaTestcNew )
-		LUA_CLASSDESCADD( "__gc",	luaTestcDestroy )
-	LUA_CLASSDESCEND
-
-	LUA_CLASSDESCAPPLY(Testc)
-
-	g_lua.run();
-	printf("%s\n", g_lua.errorString());
-	g_lua.destroy();
-
-	return 0;
-}
-
-
-namespace LuaExpose
-{
-	#include "MyVec.h"
-
-	const char *ScriptName = "expose.lua";
-};
-
-using namespace LuaExpose::Vectors;
-
-lua_State *g_context;
-
-
+using namespace Vectors;
 
 #define asFloat(x)	x/255.0f
-
 
 typedef std::pair<Vec2f, Vec3f >	vertex;
 typedef vector<vertex >				pointList;
@@ -82,91 +33,6 @@ Vec3f lastColour( 0.9f );
 
 pointList g_points;
 
-
-// From a Lua C++ binding example
-// See https://gist.github.com/1594905
-
-class Foo
-{
-	const char *m_name;
-
-	public:
-		Foo( const char *name )
-			: m_name( name )
-		{
-			printf("Foo %s is born\n", m_name);
-		}
-
-		int Add(int a, int b)
-		{
-			return( a+b );
-		}
-
-		~Foo( )
-		{
-			printf("Foo %s has gone!\n", m_name );
-		}
-};
-
-int l_Foo_constructor(lua_State * l)
-{
-	const char * name = luaL_checkstring(l, 1);
-
-	Foo ** udata = (Foo **)lua_newuserdata(l, sizeof(Foo *));
-	*udata = new Foo(name);
-
-	luaL_getmetatable(l, "luaL_Foo");
-	lua_setmetatable(l, -2);
-
-	return 1;
-}
-
-Foo * l_CheckFoo(lua_State * l, int n)
-{
-	 return *(Foo **)luaL_checkudata(l, n, "luaL_Foo");
-}
-
-int l_Foo_add(lua_State * l)
-{
-	Foo * foo = l_CheckFoo(l, 1);
-
-	int a = luaL_checknumber(l, 2);
-	int b = luaL_checknumber(l, 3);
-
-	lua_pushnumber( l, foo->Add( a, b ) );
-
-	return 1;
-}
-
-int l_Foo_destructor(lua_State * l)
-{
-	Foo * foo = l_CheckFoo(l, 1);
-	delete foo;
-
-	return 0;
-}
-
-extern "C"
-{
-	luaL_Reg sFooRegs[] =
-	{
-		{ "new", l_Foo_constructor },
-		{ "add", l_Foo_add },
-		{ "__gc", l_Foo_destructor },
-		{ NULL, NULL }
-	};
-
-	void registerSprite(lua_State *l)
-	{
-		luaL_newmetatable(l, "luaL_Foo");
-		luaL_register(l, 0, sFooRegs);
-		lua_pushvalue(l, -1);
-		lua_setfield(l, -1, "__index");
-		lua_setglobal(l, "Foo");
-	}
-
-
-}
 
 static int pushVertex( lua_State *L )
 {
@@ -271,59 +137,78 @@ static int getVertex( lua_State *L )
 	return 2;
 }
 
-void callbackDisplay();
-void callbackKeyboard(unsigned char, int, int);
 
-#define LUA_SETGLOBALSTRING(L,name,val)lua_pushstring(L,val);lua_setglobal(L,name)
-
-void luaexposeCleanup()
+bool LuaExposeSetup()
 {
-	printf("Session ending\n\n");
-	
+	printf("> Creating new session\n");
 
-	lua_close( g_context );
+	lua.init();
+	
+	lua.setGlobal( "LUAEXPOSEDESC",		"LuaExpose v0.01" );
+	lua.setGlobal( "LUAEXPOSEVERSTR",	"v0.01" );
+	lua.setGlobal( "LUAEXPOSEVER",		0.01f );
+
+	if( !( lua.loadScript( BaseScript ) ) )
+	{
+		printf("SETUP ERROR: %s\n", lua.errorString() );
+		return( false );
+	}
+
+	lua.setHook("pushVtx",		pushVertex );
+	lua.setHook("getVtx",		getVertex );
+	lua.setHook("setVtxColour",	setColour );
+	lua.setHook("pushVtxBuffer",setVertexBuffer );
+
+	return( true );
+}
+
+void LuaExposeSetupCleanup()
+{
+	printf("> Session ending\n");
+
+	lua.destroy();
 	g_points.clear();
 }
 
-//int main( int argc, char **argv )
-int main2( int argc, char **argv )
+bool LuaExposeReload()
 {
-	//#include <Windows.h>
-	//SetConsoleTitle("luaexpose debug");
+	printf("> Session reloading\n");
 
+	LuaExposeSetupCleanup();
+
+	// -- Setup default values here
+	lastColour = Vec3f( 0.9f );
+
+	// --
+
+	return( LuaExposeSetup() );
+}
+
+void callbackDisplay();
+void callbackKeyboard(unsigned char, int, int);
+
+int main( int argc, char **argv )
+{
+	printf("luaexpose\n\n");
+
+	printf("> Starting OpenGl\n");
 	glutInit(&argc,argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowSize(800,600);
 	glutInitWindowPosition(100,100);
-	glutCreateWindow("Untitled - luaexpose");
+	glutCreateWindow("luaexpose");
 	glutDisplayFunc(callbackDisplay);
 	glutKeyboardFunc(callbackKeyboard);
-
-	printf("luaexpose\n\nNew session started\n");
-
-	g_context = luaL_newstate();
-	
-	LUA_SETGLOBALSTRING( g_context, "LUAEXPOSE_DESC", "LuaExpose v0.01" );
-
-	luaL_openlibs( g_context ) ; // math, etc
-	//luaopen_math( g_context );
-
-	registerSprite( g_context );
-
-	lua_register( g_context, "pushVtx", pushVertex );
-	lua_register( g_context, "getVtx", getVertex );
-	lua_register( g_context, "setVtxColour", setColour );
-	lua_register( g_context, "pushVtxBuffer", setVertexBuffer ); // array of Vec2s
 
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
 	gluOrtho2D(0,800,600,0);
 
-	callbackKeyboard('r',0,0);
-
+	LuaExposeSetup()
+		? lua.run()
+		: printf("ERROR: %s\n", lua.errorString() );
 
 	// We need to define an exit call to clear our memory correctly
-	atexit( luaexposeCleanup );
-
+	atexit( LuaExposeSetupCleanup );
 
 	glutMainLoop();
 	return 0;
@@ -333,48 +218,12 @@ void callbackKeyboard(unsigned char keycode, int, int)
 {
 	if( keycode == 'r' )
 	{
-		printf("Reloading script..\n");
-		lua_close( g_context );
-
-		printf("Creating new context\n");
-
-	g_context = luaL_newstate();
-	
-	LUA_SETGLOBALSTRING( g_context, "LUAEXPOSE_DESC", "LuaExpose v0.01" );
-
-	luaL_openlibs( g_context ) ; // math, etc
-	//luaopen_math( g_context );
-
-	registerSprite( g_context );
-
-	lua_register( g_context, "pushVtx", pushVertex );
-	lua_register( g_context, "getVtx", getVertex );
-	lua_register( g_context, "setVtxColour", setColour );
-	lua_register( g_context, "pushVtxBuffer", setVertexBuffer ); // array of Vec2s
-
-
-
-		if( !( luaL_loadfile( g_context, LuaExpose::ScriptName ) == 0 ) )
-		{
-			printf("ERROR: %s\n", lua_tostring( g_context, -1 ) );
-		}
-		else
-		{
-			// -- Reset previous stuff
-			g_points.clear();
-			lastColour = Vec3f( 0.9f );
-
-			if( !( lua_pcall( g_context, 0, 0, 0 ) == 0 ) )
-			{
-				printf("ERROR: %s\n", lua_tostring( g_context, -1 ) );
-
-				//OutputDebugString( lua_tostring( g_context, -1 ) );
-			}
-			else
-			{
-				callbackDisplay();
-			}
-		}
+		LuaExposeReload()
+			? lua.run()
+			: printf("ERROR: %s\n", lua.errorString() );
+		
+		// Update screen after new data
+		glutPostRedisplay();
 	}
 }
 

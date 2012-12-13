@@ -7,6 +7,11 @@ LuaContext::LuaContext( )
 LuaContext::~LuaContext( )
 {}
 
+bool LuaContext::hasInit( ) const
+{
+	return( !( m_L == nullptr ) );
+}
+
 void LuaContext::init()
 {
 	// Create new state and open standard libraries
@@ -20,6 +25,11 @@ void LuaContext::destroy()
 	// Close the member state
 
 	lua_close( m_L );
+}
+
+bool LuaContext::loadScript( const string &strFilename )
+{
+	return( loadScript( strFilename.c_str() ) );
 }
 
 bool LuaContext::loadScript( const char *strFilename )
@@ -45,11 +55,21 @@ bool LuaContext::run( )
 	return( false );
 }
 
+void LuaContext::setHook( const string &strFunction, lua_CFunction luaCallback )
+{
+	setHook( strFunction.c_str(), luaCallback );
+}
+
 void LuaContext::setHook( const char *strFunction, lua_CFunction luaCallback )
 {
 	// Register a C function to Lua
 
 	lua_register( m_L, strFunction, luaCallback );
+}
+
+void LuaContext::setClassHook( const string &strClass, luaL_Reg *funcList )
+{
+	setClassHook( strClass.c_str(), funcList );
 }
 
 void LuaContext::setClassHook( const char *strClass, luaL_Reg *funcList )
@@ -68,6 +88,11 @@ void LuaContext::setClassHook( const char *strClass, luaL_Reg *funcList )
 	lua_setglobal( m_L, strClass );
 }
 
+void LuaContext::setGlobal( const string &strName, const char *strVal )
+{
+	setGlobal( strName.c_str(), strVal );
+}
+
 void LuaContext::setGlobal( const char *strName, const char *strVal )
 {
 	// Set a global string
@@ -76,12 +101,22 @@ void LuaContext::setGlobal( const char *strName, const char *strVal )
 	lua_setglobal( m_L, strName );
 }
 
+void LuaContext::setGlobal( const string &strName, float fVal )
+{
+	setGlobal( strName.c_str(), fVal );
+}
+
 void LuaContext::setGlobal( const char *strName, float fVal )
 {
 	// Set a global number
 
 	push( fVal );
 	lua_setglobal( m_L, strName );
+}
+
+void LuaContext::setGlobal( const string &strName, int iVal )
+{
+	setGlobal( strName.c_str(), iVal );
 }
 
 void LuaContext::setGlobal( const char *strName, int iVal )
@@ -134,6 +169,20 @@ void LuaContext::push( )
 	lua_pushnil( m_L );
 }
 
+void LuaContext::assertString( )
+{
+	// Ensure the top of the stack contains a string
+
+	luaL_checktype( m_L, 1, LUA_TSTRING);
+}
+
+void LuaContext::assertNumber( )
+{
+	// Ensure the top of the stack contains a number
+
+	luaL_checktype( m_L, 1, LUA_TNUMBER);
+}
+
 void LuaContext::assertTable( )
 {
 	// Ensure the top of the stack contains a table
@@ -148,17 +197,15 @@ const char *LuaContext::errorString( )
 	return( lua_tostring( m_L, -1 ) );
 }
 
-void LuaContext::assert( bool condition, const char *strError )
+void LuaContext::exception( const string &strError )
 {
-	// Raise an error when the condition is false (message string optional)
+	exception( strError.c_str() );
+}
 
-	if( m_running )
-	{
-		if( !( condition ) )
-		{
-			if( strError )
-				push( strError );
-			lua_error( m_L );
-		}
-	}
+void LuaContext::exception( const char *strError )
+{
+	// Raise an error
+
+	push( strError );
+	lua_error( m_L );
 }

@@ -1,6 +1,13 @@
 -- core.lua
 
-print( "Creating test.." )
+print("Hello from ", LUAEXPOSEDESC, "!")
 
-local t = Test:new()
+buf = {}
 
+for i=100,500,20 do
+	--table.insert(buf, {0,i})
+	--table.insert(buf, {i,0})
+	table.insert(buf, {i,i})
+end
+
+pushVtxBuffer( buf )
