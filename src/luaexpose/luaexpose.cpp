@@ -61,8 +61,18 @@ static int myPrint( lua_State *L )
 
 void setupExposedTypes()
 {
+	// -- integer types
 	lua.setClassHook("u32", u32methods);
+	lua.setClassHook("s32", s32methods);
+	lua.setClassHook("u24",	u24methods);
+	//lua.setClassHook("s24",	s24methods);
+	lua.setClassHook("u16",	u16methods);
+	lua.setClassHook("s16",	s16methods);
 	lua.setClassHook("u8",	u8methods);
+	lua.setClassHook("s8",	s8methods);
+
+	// -- float-point types
+	lua.setClassHook("f32",	f32methods);
 }
 
 static int pushVertex( lua_State *L )

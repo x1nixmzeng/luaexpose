@@ -5,6 +5,50 @@
 	Templates (incomplete) to define the common base type properties
 */
 
+union u24Base
+{
+	int val;
+	struct{ unsigned char val1, val2, val3; };
+
+	int toInt( ) const{ return( val ); }
+};
+
+template<class T> inline int template_size( int n )
+{
+	return( sizeof( T ) * n );
+}
+
+template<> inline int template_size<u24Base >( int n )
+{
+	return( 3 * n );
+}
+
+// :read(n=1) template
+template<class T>
+int l_template_read(lua_State *l)
+{
+	LuaContextBase len(l);
+	int args = lua_gettop(l);
+	int n = 1;
+
+	if( args == 0 || args > 2 )
+	{
+		len.exception("Wrong number of arguments for 'read' member function");
+	}
+
+	if( args == 2 )
+	{
+		n = len.getIntegerFromStack( -1 );
+	}
+	
+	printf("Reading %i bytes..\n", template_size<T>( n ) );
+	
+	len.push( 9000 );
+	// todo: push table of values
+
+	return 1;
+}
+
 // :size(n=1) template
 template<class T>
 int l_template_size(lua_State *l)
@@ -24,74 +68,63 @@ int l_template_size(lua_State *l)
 		n = len.getIntegerFromStack( -1 );
 	}
 	
-	len.push( static_cast<int>( sizeof(T) * n ) );
-
-	// push str: too many arguments
-	//lua_error( l );
+	len.push( template_size<T>( n ) );
 
 	return 1;
 }
 
-// -- unsigned int
-luaL_Reg u32methods[] =
+// :skip(n=1) template
+template<class T>
+int l_template_skip(lua_State *l)
 {
-	{ "read", NULL },
-	{ "size", l_template_size<unsigned int> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+	LuaContextBase len(l);
+	int args = lua_gettop(l);
+	int n = 1;
+
+	if( args == 0 || args > 2 )
+	{
+		len.exception("Wrong number of arguments for 'skip' member function");
+	}
+
+	if( args == 2 )
+	{
+		n = len.getIntegerFromStack( -1 );
+	}
+	
+	printf("Skipping %i bytes..\n", template_size<T>( n ) );
+
+	return 0;
+}
+
+#define MAKE_CALL_TABLE(n,t) \
+	luaL_Reg n[] = \
+	{ \
+		{ "read", l_template_read<t> }, \
+		{ "size", l_template_size<t> }, \
+		{ "skip", l_template_skip<t> }, \
+		{ NULL, NULL } \
+	}
+
+// -- unsigned int
+MAKE_CALL_TABLE( u32methods,	unsigned int );
 
 // -- int
-luaL_Reg s32methods[] =
-{
-	{ "read", NULL },
-	{ "size", l_template_size<int> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+MAKE_CALL_TABLE( s32methods,	int );
 
 // -- unsigned short
-luaL_Reg u16methods[] =
-{
-	{ "read", NULL },
-	{ "size", l_template_size<unsigned short> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+MAKE_CALL_TABLE( u16methods,	unsigned short );
 
 // -- short
-luaL_Reg s16methods[] =
-{
-	{ "read", NULL },
-	{ "size", l_template_size<short> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+MAKE_CALL_TABLE( s16methods,	short );
 
 // -- unsigned char
-luaL_Reg u8methods[] =
-{
-	{ "read", NULL },
-	{ "size", l_template_size<unsigned char> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+MAKE_CALL_TABLE( u8methods,		unsigned char );
 
 // -- char
-luaL_Reg s8methods[] =
-{
-	{ "read", NULL },
-	{ "size", l_template_size<char> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+MAKE_CALL_TABLE( s8methods,		char );
 
 // -- float
-luaL_Reg f32methods[] =
-{
-	{ "read", NULL },
-	{ "size", l_template_size<float> },
-	{ "skip", NULL },
-	{ NULL, NULL }
-};
+MAKE_CALL_TABLE( f32methods,	float );
 
+// -- custom type (24-bit number)
+MAKE_CALL_TABLE( u24methods,	u24Base );
