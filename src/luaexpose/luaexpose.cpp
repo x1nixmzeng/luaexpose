@@ -171,6 +171,32 @@ bool LuaExposeSetup()
 	lua.setGlobal( "LUAEXPOSEVERSTR",	"v0.01" );
 	lua.setGlobal( "LUAEXPOSEVER",		0.01f );
 
+	/*
+		For the current file (passed via dialog selection or commandline)
+			Filepath
+			Filename		
+			Extension
+			Path
+			Filesize
+
+		Required classes
+			s32/u32,s16/u16,s8/u8
+			OR base class to read/size/skip/little-big
+
+		Required global functions
+			seek( int )
+			mark( string )
+			skip( int )
+			(and other rendering settings)
+			(and actual rendering of points/lines/polys)
+
+	*/
+	lua.setGlobal( "CUR_DIR",			"C:/" );
+	lua.setGlobal( "CUR_FILE",			"C:/rip_002B1B80.dat" );
+	lua.setGlobal( "CUR_FILENAME",		"rip_002B1B80" );
+	lua.setGlobal( "CUR_FILEEXT",		"dat" );
+	lua.setGlobal( "CUR_FILESIZE",		1024 );
+
 	if( !( lua.loadScript( BaseScript ) ) )
 	{
 		printf("SETUP ERROR: %s\n", lua.errorString() );
