@@ -27,3 +27,6 @@ u8:skip(8)
 amm = u32:read(10)		-- this should instead return a table
 f32:read(amm)			--> f32:read(amm[1])
 
+print( str() )		-- read a null-terminated string
+print( str(18) )	-- read a fixed-lenth string
+print( #str(18) )

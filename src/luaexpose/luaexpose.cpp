@@ -104,6 +104,24 @@ static int myPrint( lua_State *L )
 
 #include "exposedTypes.hpp"
 
+static int myLuaString( lua_State *L )
+{
+	LuaContextBase str(L);
+	int len = 0;
+
+	if( lua_gettop(L) > 0 )
+		len = str.getNumberFromStack( -1 );
+
+	std::string example("This is an example of a c-string result. Hello world!");
+
+	if( len > 0 )
+		example = example.substr(0, len);
+
+	str.push( example.c_str() );
+
+	return 1;
+}
+
 void setupExposedTypes()
 {
 	// -- integer types
@@ -118,6 +136,23 @@ void setupExposedTypes()
 
 	// -- float-point types
 	lua.setClassHook("f32",	f32methods);
+
+	// -- string type
+	
+	/*
+		NOTE
+			Previous attempt was str(n) or str()
+			Instead str:read(n) or str:read() may be favorable
+			BUT there are now size() or skip() methods without first reading a string..
+	*/
+
+	luaL_Reg strmethods[] = 
+	{
+		{ "read", myLuaString },
+		{ NULL, NULL }
+	};
+
+	lua.setClassHook("str",	strmethods );
 }
 
 static int pushVertex( lua_State *L )
@@ -223,7 +258,6 @@ static int getVertex( lua_State *L )
 	return 2;
 }
 
-
 static int sampleTablePush( lua_State *L )
 {
 	LuaContextBase l(L);
@@ -311,12 +345,17 @@ bool LuaExposeReload()
 
 	LuaExposeSetupCleanup();
 
-	// -- Setup default values here
-	lastColour = Vec3f( 0.9f );
-	g_autoreload = false;
-	// --
+	if( LuaExposeSetup() )
+	{
+		// -- Setup default values here
+		lastColour = Vec3f( 0.9f );
+		g_autoreload = false;
+		// --
 
-	return( LuaExposeSetup() );
+		return( true );
+	}
+
+	return( false );
 }
 
 void callbackDisplay();
