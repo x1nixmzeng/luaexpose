@@ -1,5 +1,9 @@
 -- core.lua
 
+--> automatically reload the script when it is saved
+autoReload()
+
+
 print("Hello from ", LUAEXPOSEDESC, "!")
 
 t = sampleTable()								-- {100, 101, 102}
@@ -22,3 +26,4 @@ u8:skip(8)
 
 amm = u32:read(10)		-- this should instead return a table
 f32:read(amm)			--> f32:read(amm[1])
+

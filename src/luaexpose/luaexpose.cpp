@@ -18,6 +18,45 @@ using std::vector;
 #include "LuaContextBase.h"
 #include "LuaContext.h"
 
+bool g_autoreload( false );
+
+#include <Windows.h>
+
+bool getWriteTime( const char *strFilename, FILETIME *outWriteTime )
+{
+	HANDLE hFile = CreateFileA
+	(
+		strFilename,
+		GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL,
+		OPEN_EXISTING,
+		0,
+		NULL
+	);
+
+	if( hFile == INVALID_HANDLE_VALUE )
+		return( false );
+
+	if( !( GetFileTime( hFile, NULL, NULL, outWriteTime ) ) )
+	{
+		CloseHandle( hFile );
+		return( false );
+	}
+
+	CloseHandle( hFile );
+	return( true );
+}
+
+FILETIME g_modTime;
+
+bool doesTimeDiffer( FILETIME *a, FILETIME *b )
+{
+	return( !( ( a->dwHighDateTime == b->dwHighDateTime )
+				&& ( a->dwLowDateTime == b->dwLowDateTime ) ) );
+}
+
+
 LuaContext lua;
 
 const char *BaseScript = "core.lua";
@@ -33,6 +72,12 @@ typedef vector<vertex >				pointList;
 Vec3f lastColour( 0.9f );
 
 pointList g_points;
+
+static int autoReload( lua_State *L )
+{
+	g_autoreload = true;
+	return 0;
+}
 
 static int myPrint( lua_State *L )
 {
@@ -225,15 +270,23 @@ bool LuaExposeSetup()
 
 	*/
 
+	// --> This should appear before loadScript incase of error
+	if( !( getWriteTime( BaseScript, &g_modTime ) ) )
+	{
+		printf("SETUP ERROR: Failed to get last mod time\n");
+		return( false );
+	}
+
 	if( !( lua.loadScript( BaseScript ) ) )
 	{
 		printf("SETUP ERROR: %s\n", lua.errorString() );
 		return( false );
 	}
 
-	lua.setHook("sampleTable", sampleTablePush );
+	lua.setHook("sampleTable",	sampleTablePush );
 
 	lua.setHook("print",		myPrint );
+	lua.setHook("autoReload",	autoReload );
 	lua.setHook("pushVtx",		pushVertex );
 	lua.setHook("getVtx",		getVertex );
 	lua.setHook("setVtxColour",	setColour );
@@ -260,7 +313,7 @@ bool LuaExposeReload()
 
 	// -- Setup default values here
 	lastColour = Vec3f( 0.9f );
-
+	g_autoreload = false;
 	// --
 
 	return( LuaExposeSetup() );
@@ -268,6 +321,23 @@ bool LuaExposeReload()
 
 void callbackDisplay();
 void callbackKeyboard(unsigned char, int, int);
+
+void callbackAutoReload( )
+{
+	if( g_autoreload )
+	{
+		FILETIME localModTime;
+
+		if( getWriteTime( BaseScript, &localModTime ) )
+		{
+			if( doesTimeDiffer( &localModTime, &g_modTime ) )
+			{
+				printf("> Detected script modification..\n");
+				callbackKeyboard('r',0,0);
+			}
+		}
+	}
+}
 
 int main( int argc, char **argv )
 {
@@ -281,6 +351,7 @@ int main( int argc, char **argv )
 	glutCreateWindow("luaexpose");
 	glutDisplayFunc(callbackDisplay);
 	glutKeyboardFunc(callbackKeyboard);
+	glutIdleFunc(callbackAutoReload);
 
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
 	gluOrtho2D(0,800,600,0);
