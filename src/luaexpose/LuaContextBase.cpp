@@ -8,6 +8,26 @@ LuaContextBase::LuaContextBase( lua_State* existingL )
 	: m_L( existingL )
 {}
 
+/*
+bool LuaContextBase::hasGlobal( const string &strVal )
+{
+	return( hasGlobal( strVal.c_str() ) );
+}
+
+bool LuaContextBase::hasGlobal( const char *strVal )
+{
+	//lua_getglobal( m_L, strVal );
+
+	// NOT IMPLEMENTED
+
+	return( false );
+}*/
+
+int LuaContextBase::countArguments( )
+{
+	return( lua_gettop( m_L ) );
+}
+
 const char *LuaContextBase::getStringFromStack( int stackPos )
 {
 	// Get a string from a stack position

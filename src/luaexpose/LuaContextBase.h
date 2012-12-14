@@ -13,6 +13,9 @@
 #include <string>
 using std::string;
 
+#include <vector>
+using std::vector;
+
 class LuaContextBase
 {
 protected:
@@ -20,6 +23,11 @@ protected:
 public:
 	LuaContextBase( );
 	LuaContextBase( lua_State* );
+
+	//bool hasGlobal( const string & );
+	//bool hasGlobal( const char * );
+
+	int countArguments( );
 
 	const char *getStringFromStack( int );
 	float getNumberFromStack( int );
@@ -34,6 +42,24 @@ public:
 	void push( float );			// number
 	void push( int );			// integer
 	void push( );				// nil
+
+	// -- NEW push vector of type T as a table
+	template<class T> void push( const vector<T > &pool ) // table
+	{
+		if( pool.size() > 0 )
+		{
+			lua_createtable( m_L, pool.size(), 0 );
+			int newTable = lua_gettop( m_L );
+			int index = 1;
+
+			for( vector<T >::const_iterator cit( pool.begin() ); cit != pool.end(); ++cit )
+			{
+				push( *cit );
+				lua_rawseti( m_L, newTable, index++ );
+			}
+		}
+	}
+	// -- end
 
 	void assertString( );
 	void assertNumber( );

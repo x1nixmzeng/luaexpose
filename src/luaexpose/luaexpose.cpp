@@ -18,8 +18,7 @@ using std::vector;
 #include "LuaContextBase.h"
 #include "LuaContext.h"
 
-bool g_autoreload( false );
-
+#pragma region Watch for last write time on a file using the WinAPI
 #include <Windows.h>
 
 bool getWriteTime( const char *strFilename, FILETIME *outWriteTime )
@@ -48,19 +47,19 @@ bool getWriteTime( const char *strFilename, FILETIME *outWriteTime )
 	return( true );
 }
 
-FILETIME g_modTime;
-
 bool doesTimeDiffer( FILETIME *a, FILETIME *b )
 {
 	return( !( ( a->dwHighDateTime == b->dwHighDateTime )
 				&& ( a->dwLowDateTime == b->dwLowDateTime ) ) );
 }
 
+FILETIME g_modTime;
+#pragma endregion
 
+// -- our collection of globals (TOFIX)
+bool g_autoreload( false );
 LuaContext lua;
-
 const char *BaseScript = "core.lua";
-
 
 using namespace Vectors;
 
@@ -70,30 +69,31 @@ typedef std::pair<Vec2f, Vec3f >	vertex;
 typedef vector<vertex >				pointList;
 
 Vec3f lastColour( 0.9f );
-
 pointList g_points;
+// --
 
 static int autoReload( lua_State *L )
 {
+	// -- no need to toggle
 	g_autoreload = true;
 	return 0;
 }
 
 static int myPrint( lua_State *L )
 {
-	int args = lua_gettop(L);
+	LuaContextBase mylua( L );
+
+	int args = mylua.countArguments();
 
 	if( args > 0 )
 	{
-		LuaContextBase tmpLua( L );
-
 		printf("Script > ");
 
 		// It looks like numbers are converted to strings anyway..
 		// Also due to the stack, things are pushed in reverse order.. (fixed)
 
 		for( int i = args; i > 0; --i )
-			printf( "%s", tmpLua.getStringFromStack( -i ) );
+			printf( "%s", mylua.getStringFromStack( -i ) );
 
 		printf("\n");
 
@@ -106,18 +106,18 @@ static int myPrint( lua_State *L )
 
 static int myLuaString( lua_State *L )
 {
-	LuaContextBase str(L);
+	LuaContextBase mylua( L );
 	int len = 0;
 
-	if( lua_gettop(L) > 0 )
-		len = str.getNumberFromStack( -1 );
+	if( mylua.countArguments() > 0 )
+		len = mylua.getNumberFromStack( -1 );
 
 	std::string example("This is an example of a c-string result. Hello world!");
 
 	if( len > 0 )
 		example = example.substr(0, len);
 
-	str.push( example.c_str() );
+	mylua.push( example );
 
 	return 1;
 }
@@ -260,15 +260,14 @@ static int getVertex( lua_State *L )
 
 static int sampleTablePush( lua_State *L )
 {
-	LuaContextBase l(L);
+	LuaContextBase mylua( L );
 
-	lua_createtable(L, 3, 0);
-	int newTable = lua_gettop(L);
-    int index = 1;
+	vector<int > test;
+	test.push_back(101);
+	test.push_back(102);
+	test.push_back(103);
 
-	l.push( 100 );		lua_rawseti(L, newTable, index++);
-	l.push( 101 );		lua_rawseti(L, newTable, index++);
-	l.push( 102 );		lua_rawseti(L, newTable, index++);
+	mylua.push<int>( test );
 
 	return 1;
 }
