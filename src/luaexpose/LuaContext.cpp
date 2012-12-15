@@ -17,11 +17,15 @@ void LuaContext::init()
 
 	m_L = luaL_newstate();
 	
-	// UPDATED: We don't want access to everything
-	//luaL_openlibs( m_L ) ;
+	/*
+		NOTE: We don't want to provide access to everything BUT
+		there is a problem loading libaries seperately
+		See http://stackoverflow.com/a/10821793
+	*/
 
-	luaopen_table( m_L );	// Table manipulation
-	luaopen_math( m_L );	// Math routines
+	// So for now..
+	luaL_openlibs( m_L ) ;
+
 }
 
 void LuaContext::destroy()

@@ -30,3 +30,16 @@ f32:read(amm)			--> f32:read(amm[1])
 print( str:read() )		-- read a null-terminated string
 print( str:read(18) )	-- read a fixed-length string
 print( #str:read(18) )	-- get length of string (either nt or fl)
+
+-----------------------------------------------------------------
+--> Setting a clockface using some math library functions
+-----------------------------------------------------------------
+setVtxColour( 255, 128, 0 )
+
+for i=0,360,30 do
+  x = math.sin( math.rad( i ) ) * 100
+  y = math.cos( math.rad( i ) ) * 75
+
+  pushVtx( 400 + x, 300 + y )
+end
+

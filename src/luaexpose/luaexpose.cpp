@@ -169,6 +169,7 @@ static int pushVertex( lua_State *L )
     return 0;
 }
 
+// -- converts from rgb
 static int setColour( lua_State *L )
 {
 	float r = lua_tonumber(L, -3);
@@ -178,6 +179,7 @@ static int setColour( lua_State *L )
 	lastColour.xyz[0] = r;
 	lastColour.xyz[1] = g;
 	lastColour.xyz[2] = b;
+	lastColour /= 255.0f;
 
 	lua_pop(L,3);
 
@@ -267,7 +269,7 @@ static int sampleTablePush( lua_State *L )
 	test.push_back(102);
 	test.push_back(103);
 
-	mylua.push<int>( test );
+	mylua.push<int >( test );
 
 	return 1;
 }
@@ -278,7 +280,7 @@ bool LuaExposeSetup()
 
 	lua.init();
 	
-	lua.setGlobal( "LUAEXPOSEDESC",		"LuaExpose v0.01" );
+	lua.setGlobal( "LUAEXPOSEDESC",		"LuaExpose" );
 	lua.setGlobal( "LUAEXPOSEVERSTR",	"v0.01" );
 	lua.setGlobal( "LUAEXPOSEVER",		0.01f );
 
@@ -372,6 +374,7 @@ void callbackAutoReload( )
 			{
 				printf("> Detected script modification..\n");
 				callbackKeyboard('r',0,0);
+				FlashWindow( GetConsoleWindow(), true );
 			}
 		}
 	}
