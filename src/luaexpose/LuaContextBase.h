@@ -43,6 +43,18 @@ public:
 	void push( int );			// integer
 	void push( );				// nil
 
+	int createTable( int elements )
+	{
+		lua_createtable( m_L, elements, 0 );
+		return lua_gettop( m_L );
+	}
+
+	void pushTableElement( int value, int table, int &index )
+	{
+		push( value );
+		lua_rawseti( m_L, table, index++ );
+	}
+
 	// -- NEW push vector of type T as a table
 	template<class T> void push( const vector<T > &pool ) // table
 	{

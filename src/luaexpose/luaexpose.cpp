@@ -70,6 +70,8 @@ typedef vector<vertex >				pointList;
 
 Vec3f lastColour( 0.9f );
 pointList g_points;
+
+FILE *g_fHandle;
 // --
 
 static int autoReload( lua_State *L )
@@ -112,12 +114,42 @@ static int myLuaString( lua_State *L )
 	if( mylua.countArguments() > 0 )
 		len = mylua.getNumberFromStack( -1 );
 
-	std::string example("This is an example of a c-string result. Hello world!");
+	std::string str;
 
-	if( len > 0 )
-		example = example.substr(0, len);
+	char mychr=1;
 
-	mylua.push( example );
+	if( len == 0 )
+	{
+		do
+		{
+			if( fread(&mychr,1,1,g_fHandle) && mychr != 0 )
+				str += mychr;
+		}
+		while( mychr );
+	}
+	else
+	{
+		char *mystr = new char[len+1];
+		mystr[len]=0;
+
+		fread(mystr,1,len,g_fHandle);
+		/*
+		// cut off the padding
+		int pos=0;
+		while(pos<len)
+		{
+			if(mystr[pos]==0)break;++pos;
+		}
+		if(pos<len)
+		{
+			mystr[pos]=0;
+		}
+		*/
+		str.assign( mystr, len );
+		delete mystr;
+	}
+
+	mylua.push( str );
 
 	return 1;
 }
@@ -127,7 +159,7 @@ void setupExposedTypes()
 	// -- integer types
 	lua.setClassHook("u32", u32methods);
 	lua.setClassHook("s32", s32methods);
-	lua.setClassHook("u24",	u24methods);
+	//lua.setClassHook("u24",	u24methods);
 	//lua.setClassHook("s24",	s24methods);
 	lua.setClassHook("u16",	u16methods);
 	lua.setClassHook("s16",	s16methods);
@@ -274,6 +306,59 @@ static int sampleTablePush( lua_State *L )
 	return 1;
 }
 
+static int dataCheck( lua_State *L )
+{
+	LuaContextBase l(L);
+	l.push( ( g_fHandle == nullptr ) ? 0 : 1 );
+
+	return 1;
+}
+
+static int dataSize( lua_State *L )
+{
+	LuaContextBase l(L);
+
+	unsigned int curpos = ftell( g_fHandle );
+	fseek( g_fHandle, 0, SEEK_END );
+
+	l.push( ftell( g_fHandle ) );
+
+	fseek( g_fHandle, curpos, SEEK_SET );
+
+
+	return 1;
+}
+
+static int dataSeek( lua_State *L )
+{
+	LuaContextBase l(L);
+
+	if( l.countArguments() == 1 )
+	{
+		fseek(g_fHandle, l.getNumberFromStack(-1), SEEK_SET);
+	}
+	else
+	{
+		l.exception("Expected 1 argument for 'seek' function");
+	}
+
+	return 1;
+}
+
+static int dataPos( lua_State *L )
+{
+	LuaContextBase l(L);
+	l.push( ftell( g_fHandle ) );
+
+	return 1;
+}
+
+static int hideWindow( lua_State *L )
+{
+	ShowWindow( FindWindow(NULL,"luaexpose"), SW_HIDE );
+	return 0;
+}
+
 bool LuaExposeSetup()
 {
 	printf("> Creating new session\n");
@@ -318,7 +403,21 @@ bool LuaExposeSetup()
 		return( false );
 	}
 
+	g_fHandle = fopen( "md2\\SWITCH_WALL.md2", "rb" );
+
+	if( !( g_fHandle ) )
+	{
+		printf("SETUP ERROR: Failed to load datan\n");
+		return( false );
+	}
+
 	lua.setHook("sampleTable",	sampleTablePush );
+
+	lua.setHook("hasData",		dataCheck );
+	lua.setHook("size",			dataSize);
+	lua.setHook("seek",			dataSeek);
+	lua.setHook("pos",			dataPos);
+	lua.setHook("nowindow",		hideWindow);
 
 	lua.setHook("print",		myPrint );
 	lua.setHook("autoReload",	autoReload );
@@ -335,6 +434,12 @@ bool LuaExposeSetup()
 void LuaExposeSetupCleanup()
 {
 	printf("> Session ending\n");
+
+	if( g_fHandle )
+	{
+		fclose( g_fHandle );
+		g_fHandle = nullptr;
+	}
 
 	lua.destroy();
 	g_points.clear();
@@ -396,7 +501,7 @@ int main( int argc, char **argv )
 
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
 	gluOrtho2D(0,800,600,0);
-
+	
 	if( LuaExposeSetup() )
 		if( !( lua.run() ) )
 			printf("ERROR: %s\n", lua.errorString() );

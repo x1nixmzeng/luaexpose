@@ -2,44 +2,17 @@
 
 --> automatically reload the script when it is saved
 autoReload()
+nowindow()
 
+if hasData() then
+	print("Data size is ", size(), " bytes")
 
-print("Hello from ", LUAEXPOSEDESC, "!")
+	print(u32:read()[1])
 
-t = sampleTable()								-- {100, 101, 102}
+	seek(68);
 
-for i=1, #t do
-	print(t[i])
+	print(str:read(100)) -- SWITCH_WALL.pcx
+
+else
+	print("Data was not loaded!")
 end
-
-print("result = ", #t)							-- 3
-
-print("size of 1x   u32 = ", u32:size())		-- 4
-print("size of 1x   u8  = ", u8:size())			-- 1
-print("size of 80x  u32 = ", u32:size(80))		-- 320
-print("size of 160x u8  = ", u8:size(160))		-- 160
-print("size of 1x   u24 = ", u24:size())		-- 3
-print("size of 80x  u24 = ", u24:size(80))		-- 240
-
-f32:read()
-u8:skip(8)
-
-amm = u32:read(10)		-- this should instead return a table
-f32:read(amm)			--> f32:read(amm[1])
-
-print( str:read() )		-- read a null-terminated string
-print( str:read(18) )	-- read a fixed-length string
-print( #str:read(18) )	-- get length of string (either nt or fl)
-
------------------------------------------------------------------
---> Setting a clockface using some math library functions
------------------------------------------------------------------
-setVtxColour( 255, 128, 0 )
-
-for i=0,360,30 do
-  x = math.sin( math.rad( i ) ) * 100
-  y = math.cos( math.rad( i ) ) * 75
-
-  pushVtx( 400 + x, 300 + y )
-end
-
