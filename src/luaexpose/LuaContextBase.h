@@ -33,7 +33,11 @@ public:
 	float getNumberFromStack( int );
 	int getIntegerFromStack( int );
 
-	const char *popString( );
+	//const char *popString( );
+
+	void call( const char * );
+	int getGlobalInteger( const char * );
+	const char *getGlobalString( const char * );
 
 	void pop( );
 
@@ -49,7 +53,13 @@ public:
 		return lua_gettop( m_L );
 	}
 
-	void pushTableElement( int value, int table, int &index )
+	void pushTableInteger( int value, int table, int &index )
+	{
+		push( value );
+		lua_rawseti( m_L, table, index++ );
+	}
+
+	void pushTableNumber( float value, int table, int &index )
 	{
 		push( value );
 		lua_rawseti( m_L, table, index++ );

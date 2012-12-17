@@ -27,34 +27,79 @@ template<> inline int template_size<u24Base >( int n )
 }
 
 /*
-	the :read(n=1) method is too ambiguous with templates
+	Read single value		read()		Returns value of type
+	Read number of values	read(n)		Returns table of values of type
 */
-
-int l_read_u32(lua_State *L)
+template<class T> int l_template_read(lua_State *L)
 {
 	LuaContextBase l(L);
 	int args = l.countArguments();
-	int n = 1;
 
 	if( args == 0 || args > 2 )
 		l.exception("Wrong number of arguments for 'read' member function");
 
 	if( args == 2 )
-		n = l.getIntegerFromStack( -1 );
-	
-	
-	int table = l.createTable(n);
-	int index=1;
+	{
+		int n = l.getIntegerFromStack( -1 );
+		int table = l.createTable(n);
+		int index=1;
 
-	for( int i=0; i<n; ++i )
+		for( int i=0; i<n; ++i )
+		{
+			unsigned int val=0;// use this for all types
+
+			int result = fread((void*)&val,	1,sizeof(T),g_fHandle);
+			if (result != sizeof(T))
+				l.exception("Failed to read data from file for 'read' member function");
+
+			l.pushTableInteger( static_cast<T>(val), table, index );
+		}
+	}
+	else
 	{
 		unsigned int val=0;// use this for all types
 
-		int result = fread((void*)&val,1,sizeof(unsigned int),g_fHandle);
-		if (result != sizeof(unsigned int))
+		if( !( fread((void*)&val, 1, sizeof(T), g_fHandle ) == sizeof(T) ) )
 			l.exception("Failed to read data from file for 'read' member function");
 
-		l.pushTableElement( val, table, index );
+		l.push( static_cast<int>( val ) );
+	}
+
+	return 1;
+}
+
+int l_read_f32(lua_State *L)
+{
+	LuaContextBase l(L);
+	int args = l.countArguments();
+	if( args == 0 || args > 2 )
+		l.exception("Wrong number of arguments for 'read' member function");
+
+	if( args == 2 )
+	{
+		int n = l.getIntegerFromStack( -1 );
+		int table = l.createTable(n);
+		int index=1;
+
+		for( int i=0; i<n; ++i )
+		{
+			float val;
+
+			int result = fread((void*)&val,	1,sizeof(float),g_fHandle);
+			if (result != sizeof(float))
+				l.exception("Failed to read data from file for 'read' member function");
+
+			l.pushTableNumber( val, table, index );
+		}
+	}
+	else
+	{
+		float val;
+
+		if( !( fread((void*)&val, 1, sizeof(val), g_fHandle ) == sizeof(val) ) )
+			l.exception("Failed to read data from file for 'read' member function");
+
+		l.push( val );
 	}
 
 	return 1;
@@ -117,25 +162,25 @@ int l_template_skip(lua_State *L)
 	}
 
 // -- unsigned int
-MAKE_CALL_TABLE( u32methods,	unsigned int,		l_read_u32 );
+MAKE_CALL_TABLE( u32methods,	unsigned int,		l_template_read<unsigned int > );
 
 // -- int
 MAKE_CALL_TABLE( s32methods,	int,				NULL );
 
 // -- unsigned short
-MAKE_CALL_TABLE( u16methods,	unsigned short,		NULL );
+MAKE_CALL_TABLE( u16methods,	unsigned short,		l_template_read<unsigned short > );
 
 // -- short
 MAKE_CALL_TABLE( s16methods,	short,				NULL );
 
 // -- unsigned char
-MAKE_CALL_TABLE( u8methods,		unsigned char,		NULL );
+MAKE_CALL_TABLE( u8methods,		unsigned char,		l_template_read<unsigned char > );
 
 // -- char
 MAKE_CALL_TABLE( s8methods,		char,				NULL );
 
 // -- float
-MAKE_CALL_TABLE( f32methods,	float,				NULL );
+MAKE_CALL_TABLE( f32methods,	float,				l_read_f32 );
 
 // -- custom type (24-bit number)
 //MAKE_CALL_TABLE( u24methods,	u24Base );

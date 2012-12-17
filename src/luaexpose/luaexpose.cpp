@@ -57,7 +57,7 @@ FILETIME g_modTime;
 #pragma endregion
 
 // -- our collection of globals (TOFIX)
-bool g_autoreload( false );
+bool g_autoreload( true );
 LuaContext lua;
 const char *BaseScript = "core.lua";
 
@@ -65,7 +65,7 @@ using namespace Vectors;
 
 #define asFloat(x)	x/255.0f
 
-typedef std::pair<Vec2f, Vec3f >	vertex;
+typedef std::pair<Vec3f, Vec3f >	vertex;
 typedef vector<vertex >				pointList;
 
 Vec3f lastColour( 0.9f );
@@ -73,36 +73,6 @@ pointList g_points;
 
 FILE *g_fHandle;
 // --
-
-static int autoReload( lua_State *L )
-{
-	// -- no need to toggle
-	g_autoreload = true;
-	return 0;
-}
-
-static int myPrint( lua_State *L )
-{
-	LuaContextBase mylua( L );
-
-	int args = mylua.countArguments();
-
-	if( args > 0 )
-	{
-		printf("Script > ");
-
-		// It looks like numbers are converted to strings anyway..
-		// Also due to the stack, things are pushed in reverse order.. (fixed)
-
-		for( int i = args; i > 0; --i )
-			printf( "%s", mylua.getStringFromStack( -i ) );
-
-		printf("\n");
-
-	}
-
-	return 0;
-}
 
 #include "exposedTypes.hpp"
 
@@ -133,18 +103,6 @@ static int myLuaString( lua_State *L )
 		mystr[len]=0;
 
 		fread(mystr,1,len,g_fHandle);
-		/*
-		// cut off the padding
-		int pos=0;
-		while(pos<len)
-		{
-			if(mystr[pos]==0)break;++pos;
-		}
-		if(pos<len)
-		{
-			mystr[pos]=0;
-		}
-		*/
 		str.assign( mystr, len );
 		delete mystr;
 	}
@@ -189,16 +147,29 @@ void setupExposedTypes()
 
 static int pushVertex( lua_State *L )
 {
-	float x = lua_tonumber(L, -2);
-	float y = lua_tonumber(L, -1);
+	float x = lua_tonumber(L, -3);
+	float y = lua_tonumber(L, -2);
+	float z = lua_tonumber(L, -1);
 	
-	g_points.push_back( vertex( Vec2f( x, y ), lastColour ) );
+	g_points.push_back( vertex( Vec3f( x, y, z ), lastColour ) );
 
-	printf( "Got [%.2f, %.2f]!\n", x, y );
-
-	lua_pop(L,2);
+	lua_pop(L,3);
 
     return 0;
+}
+
+float g_angle(0.0f), g_x(0.0f), g_y(0.0f), g_z(0.0f);
+
+static int setRotations( lua_State *L )
+{
+	g_angle = lua_tonumber(L, -4);
+	g_x = lua_tonumber(L, -3);
+	g_y = lua_tonumber(L, -2);
+	g_z = lua_tonumber(L, -1);
+
+	lua_pop(L,3);
+
+	return 0;
 }
 
 // -- converts from rgb
@@ -226,7 +197,7 @@ bool luaGetVec2( lua_State *L )
 
 	// TODO: Determine if there are 2 nodes here and use them without the loop
 	
-	Vec2f demo;
+	Vec3f demo;
 	int i(0);
 
 	while( lua_next(L, -2) != 0 )
@@ -283,35 +254,15 @@ static int getVertex( lua_State *L )
 
 		return 1;
 	}
-
+	/*
 	const Vec2f &point = g_points.at( indx ).first;
 
 	lua_pushnumber( L, point.x );
 	lua_pushnumber( L, point.y );
 
 	return 2;
-}
-
-static int sampleTablePush( lua_State *L )
-{
-	LuaContextBase mylua( L );
-
-	vector<int > test;
-	test.push_back(101);
-	test.push_back(102);
-	test.push_back(103);
-
-	mylua.push<int >( test );
-
-	return 1;
-}
-
-static int dataCheck( lua_State *L )
-{
-	LuaContextBase l(L);
-	l.push( ( g_fHandle == nullptr ) ? 0 : 1 );
-
-	return 1;
+	*/
+	return 0;
 }
 
 static int dataSize( lua_State *L )
@@ -353,12 +304,6 @@ static int dataPos( lua_State *L )
 	return 1;
 }
 
-static int hideWindow( lua_State *L )
-{
-	ShowWindow( FindWindow(NULL,"luaexpose"), SW_HIDE );
-	return 0;
-}
-
 bool LuaExposeSetup()
 {
 	printf("> Creating new session\n");
@@ -368,27 +313,6 @@ bool LuaExposeSetup()
 	lua.setGlobal( "LUAEXPOSEDESC",		"LuaExpose" );
 	lua.setGlobal( "LUAEXPOSEVERSTR",	"v0.01" );
 	lua.setGlobal( "LUAEXPOSEVER",		0.01f );
-
-	/*
-		For the current file (passed via dialog selection or commandline)
-			Filepath
-			Filename		
-			Extension
-			Path
-			Filesize
-
-		Required classes
-			s32/u32,s16/u16,s8/u8
-			OR base class to read/size/skip/little-big
-
-		Required global functions
-			seek( int )
-			mark( string )
-			skip( int )
-			(and other rendering settings)
-			(and actual rendering of points/lines/polys)
-
-	*/
 
 	// --> This should appear before loadScript incase of error
 	if( !( getWriteTime( BaseScript, &g_modTime ) ) )
@@ -403,30 +327,25 @@ bool LuaExposeSetup()
 		return( false );
 	}
 
-	g_fHandle = fopen( "md2\\SWITCH_WALL.md2", "rb" );
-
-	if( !( g_fHandle ) )
-	{
-		printf("SETUP ERROR: Failed to load datan\n");
-		return( false );
-	}
-
-	lua.setHook("sampleTable",	sampleTablePush );
-
-	lua.setHook("hasData",		dataCheck );
+	// -- Data specific
 	lua.setHook("size",			dataSize);
 	lua.setHook("seek",			dataSeek);
 	lua.setHook("pos",			dataPos);
-	lua.setHook("nowindow",		hideWindow);
 
-	lua.setHook("print",		myPrint );
-	lua.setHook("autoReload",	autoReload );
+	// -- Output specific
+	lua.setHook("rotateScene",	setRotations );
 	lua.setHook("pushVtx",		pushVertex );
 	lua.setHook("getVtx",		getVertex );
 	lua.setHook("setVtxColour",	setColour );
 	lua.setHook("pushVtxBuffer",setVertexBuffer );
 
 	setupExposedTypes();
+
+	if( !( lua.run() ) )
+	{
+		printf("ERROR: %s\n", lua.errorString() );
+		return false;
+	}
 
 	return( true );
 }
@@ -445,23 +364,33 @@ void LuaExposeSetupCleanup()
 	g_points.clear();
 }
 
-bool LuaExposeReload()
+void LuaExposeLoad()
 {
-	printf("> Session reloading\n");
-
-	LuaExposeSetupCleanup();
+	// -- Setup default values here
+	lastColour = Vec3f( 0.9f );
+	g_angle = 0.0f;
+	g_x = g_y = g_z = 0.0f;
+	// --
 
 	if( LuaExposeSetup() )
 	{
-		// -- Setup default values here
-		lastColour = Vec3f( 0.9f );
-		g_autoreload = false;
-		// --
+		const char *fname = lua.getGlobalString("file");
 
-		return( true );
+		if( fname )
+		{
+			g_fHandle = fopen( fname, "rb" );
+
+			if( !( g_fHandle ) )
+			{
+				printf("ERROR: Failed to load data\n");
+				return;
+			}
+
+			lua.call("main");
+		}
+		else
+			printf("WARNING: No input file has been specified\n");
 	}
-
-	return( false );
 }
 
 void callbackDisplay();
@@ -487,24 +416,36 @@ void callbackAutoReload( )
 
 int main( int argc, char **argv )
 {
+	// todo: optional argument for display window (opengl)
+	// messages would need processes in other ways though
 	printf("luaexpose\n\n");
 
 	printf("> Starting OpenGl\n");
+
 	glutInit(&argc,argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB| GLUT_DEPTH);
 	glutInitWindowSize(800,600);
 	glutInitWindowPosition(100,100);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glShadeModel(GL_SMOOTH);
+
 	glutCreateWindow("luaexpose");
 	glutDisplayFunc(callbackDisplay);
 	glutKeyboardFunc(callbackKeyboard);
 	glutIdleFunc(callbackAutoReload);
 
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
-	gluOrtho2D(0,800,600,0);
-	
-	if( LuaExposeSetup() )
-		if( !( lua.run() ) )
-			printf("ERROR: %s\n", lua.errorString() );
+	//gluOrtho2D(0,800,600,0);
+
+	glViewport(0, 0, 800, 600);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45.0f, 800.f/600.f, 1.0f, 1000.0f);
+	glMatrixMode(GL_MODELVIEW);
+
+	LuaExposeLoad();
 
 	// We need to define an exit call to clear our memory correctly
 	atexit( LuaExposeSetupCleanup );
@@ -517,9 +458,9 @@ void callbackKeyboard(unsigned char keycode, int, int)
 {
 	if( keycode == 'r' )
 	{
-		if( LuaExposeReload() )
-			if( !( lua.run() ) )
-				printf("ERROR: %s\n", lua.errorString() );
+		printf("> Session reloading\n");
+		LuaExposeSetupCleanup();
+		LuaExposeLoad();
 		
 		// Update screen after new data
 		glutPostRedisplay();
@@ -531,15 +472,20 @@ void renderPoints( vertex &point )
 	glColor3f( point.second.x, point.second.y, point.second.z );
 
 	glBegin(GL_POINTS);
-		glVertex2f( point.first.x, point.first.y );
+	glVertex3f( point.first.x, point.first.y, point.first.z );
 	glEnd();
 }
 
 void callbackDisplay()
 {
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
+	gluLookAt(0, 0, -50.0f, 0, 0, -1, 0, 1, 0);
 
 	glPushMatrix();
+
+	glRotatef( g_angle, g_x, g_y, g_z );
+	glScalef( 10.0f, 10.0f, 10.0f );
 
 	glPointSize(10);
 

@@ -23,6 +23,28 @@ bool LuaContextBase::hasGlobal( const char *strVal )
 	return( false );
 }*/
 
+void LuaContextBase::call( const char * strFunc )
+{
+	lua_getglobal( m_L, strFunc );
+	lua_call( m_L, 0, 0 );
+}
+
+int LuaContextBase::getGlobalInteger( const char *strVal )
+{
+	lua_getglobal( m_L, strVal );
+	int r = lua_tointeger( m_L, -1 );
+	pop();
+	return r;
+}
+
+const char *LuaContextBase::getGlobalString( const char *strVal )
+{
+	lua_getglobal( m_L, strVal );
+	const char *r = lua_tostring( m_L, -1 );
+	pop();
+	return r;
+}
+
 int LuaContextBase::countArguments( )
 {
 	return( lua_gettop( m_L ) );
