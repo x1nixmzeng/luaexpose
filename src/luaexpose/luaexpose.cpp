@@ -708,6 +708,15 @@ void renderPoint( const Vec3f &p )
 	glEnd();
 }
 
+void renderFace( const index &i )
+{
+	glBegin( GL_TRIANGLES );
+		glVertex3f( g_points.at( i.ia ).x, g_points.at( i.ia ).y, g_points.at( i.ia ).z );
+		glVertex3f( g_points.at( i.ib ).x, g_points.at( i.ib ).y, g_points.at( i.ib ).z );
+		glVertex3f( g_points.at( i.ic ).x, g_points.at( i.ic ).y, g_points.at( i.ic ).z );
+	glEnd();
+}
+
 void callbackDisplay()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -718,7 +727,7 @@ void callbackDisplay()
 	glLoadIdentity();
 	gluLookAt(40.0f, 20.0f, -40.0f, 0, 0, -1, 0, 1, 0);
 
-	//glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
 	glPushMatrix();
 
@@ -743,10 +752,18 @@ void callbackDisplay()
 
 		for_each
 		(
+			g_indices.begin(),
+			g_indices.end(),
+			renderFace
+		);
+		/*
+		for_each
+		(
 			g_points.begin(),
 			g_points.end(),
 			renderPoint
 		);
+		*/
 	}
 	
 	glPopMatrix();
