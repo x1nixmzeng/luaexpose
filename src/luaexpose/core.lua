@@ -7,13 +7,15 @@ file = "Shaiya/demf_boots001.3DC"
 
 function log(...) io.write(...) end
 
+assert( false );
+
 function main()
-	log("Got ", size(), " bytes\n")
+	log("Got ", size(), " bytes!\n")
 	
-	-- skip 4 bytes
+	-- skip blank field
 	u32:skip()
 
-	-- read bones
+	-- skip bones
 	numBones = u32:read()
 	f32:skip(16*numBones)
 
@@ -25,9 +27,6 @@ function main()
 
 	for vert=1,numVerts do
 		vec3 = f32:read(3)
-		--vec3[1] = vec3[1]*100
-		--vec3[2] = vec3[2]
-		--vec3[3] = vec3[3]*100
 		table.insert(vdata,vec3)
 
 		f32:skip()
@@ -35,6 +34,19 @@ function main()
 		f32:skip(3+2)
 	end
 
-	pushVtxBuffer( vdata )
-	log("Done\n");
+	-- read faces
+	numFaces = u32:read()
+	log("Faces: ", numFaces, "\n")
+
+	fdata = {}
+
+	for faces=1,numFaces do
+		vec3 = u16:read(3)
+		table.insert(fdata,vec3)
+	end
+
+	rotateScene(180, 0, -1, 1)
+
+	setVTable( vdata )		--> must be first
+	setFITable( fdata )		--> todo: face type (tri_strip, etc)
 end

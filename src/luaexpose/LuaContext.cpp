@@ -97,7 +97,7 @@ void LuaContext::setGlobal( const char *strName, const char *strVal )
 {
 	// Set a global string
 
-	push( strVal );
+	pushCStr( strVal );
 	lua_setglobal( m_L, strName );
 }
 
@@ -110,7 +110,7 @@ void LuaContext::setGlobal( const char *strName, float fVal )
 {
 	// Set a global number
 
-	push( fVal );
+	pushNum( fVal );
 	lua_setglobal( m_L, strName );
 }
 
@@ -123,6 +123,6 @@ void LuaContext::setGlobal( const char *strName, int iVal )
 {
 	// Set a global integer
 
-	push( iVal );
+	pushInt( iVal );
 	lua_setglobal( m_L, strName );
 }

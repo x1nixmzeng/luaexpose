@@ -21,7 +21,7 @@ Vec3( const Vec3& c )
 {}
 
 // Assignment
-Vec3 operator=( const Vec3 &c )
+const Vec3 &operator=( const Vec3 &c )
 {
 	x = c.x;
 	y = c.y;
@@ -36,7 +36,7 @@ bool operator==( const Vec3 &r )
 }
 
 // Add to
-Vec3 operator+=( const Vec3 &c )
+const Vec3 &operator+=( const Vec3 &c )
 {
 	x += c.x;
 	y += c.y;
@@ -45,7 +45,7 @@ Vec3 operator+=( const Vec3 &c )
 }
 
 // Subtract from
-Vec3 operator-=( const Vec3 &c )
+const Vec3 &operator-=( const Vec3 &c )
 {
 	x -= c.x;
 	y -= c.y;
@@ -54,7 +54,7 @@ Vec3 operator-=( const Vec3 &c )
 }
 
 // Multiply by
-Vec3 operator*=( const Vec3 &c )
+const Vec3 &operator*=( const Vec3 &c )
 {
 	x *= c.x;
 	y *= c.y;
@@ -63,7 +63,7 @@ Vec3 operator*=( const Vec3 &c )
 }
 
 // Multiply by (scalar)
-Vec3 operator*=( T val )
+const Vec3 &operator*=( T val )
 {
 	x *= val;
 	y *= val;
@@ -72,7 +72,7 @@ Vec3 operator*=( T val )
 }
 
 // Divide by
-Vec3 operator/=( const Vec3 &c )
+const Vec3 &operator/=( const Vec3 &c )
 {
 	x /= c.x;
 	y /= c.y;
@@ -81,7 +81,7 @@ Vec3 operator/=( const Vec3 &c )
 }
 
 // Divide by (scalar)
-Vec3 operator/=( T val )
+const Vec3 &operator/=( T val )
 {
 	x /= val;
 	y /= val;
@@ -89,25 +89,25 @@ Vec3 operator/=( T val )
 	return( *this );
 }
 
-Vec3 operator+( const Vec3 &r )
+const Vec3 &operator+( const Vec3 &r )
 {
 	*this += r;
 	return( *this );
 }
 
-Vec3 operator-( const Vec3 &r )
+const Vec3 &operator-( const Vec3 &r )
 {
 	*this -= r;
 	return( *this );
 }
 
-Vec3 operator*( const Vec3 &r )
+const Vec3 &operator*( const Vec3 &r )
 {
 	*this *= r;
 	return( *this );
 }
 
-Vec3 operator/( const Vec3 &r )
+const Vec3 &operator/( const Vec3 &r )
 {
 	*this /= r;
 	return( *this );

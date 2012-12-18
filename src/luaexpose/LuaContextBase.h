@@ -8,13 +8,13 @@
 #define _H_LUACONTEXTBASE_
 
 #define LUA_COMPAT_ALL
-#include "lua\lua.hpp"
+#include "lua/lua.hpp"
 
 #include <string>
-using std::string;
-
 #include <vector>
-using std::vector;
+#include <iterator>
+
+using namespace std;
 
 class LuaContextBase
 {
@@ -24,69 +24,41 @@ public:
 	LuaContextBase( );
 	LuaContextBase( lua_State* );
 
-	//bool hasGlobal( const string & );
-	//bool hasGlobal( const char * );
-
 	int countArguments( );
 
-	const char *getStringFromStack( int );
-	float getNumberFromStack( int );
-	int getIntegerFromStack( int );
+	// -- Get items from the stack
+	const char *getCStr( int );
+	float getNum( int );
+	int getInt( int );
 
-	//const char *popString( );
+	// -- Remove item from the stack
+	void pop( );
 
+	// -- 
 	void call( const char * );
+
+	// -- Get global values (must exist)
 	int getGlobalInteger( const char * );
 	const char *getGlobalString( const char * );
 
-	void pop( );
+	// -- Push item to the stack
+	void pushStr( const string& );
+	void pushCStr( const char * );
+	void pushNum( float );
+	void pushInt( int );
+	void pushNil( );
 
-	void push( const string& );	// string
-	void push( const char * );	// string
-	void push( float );			// number
-	void push( int );			// integer
-	void push( );				// nil
+	// -- Table routines (superseeded - see LuaContextTable)
+	//int createTable( int elements );
+	//void pushTableInteger( int, int, int & );
+	//void pushTableNumber( float, int, int & );
 
-	int createTable( int elements )
-	{
-		lua_createtable( m_L, elements, 0 );
-		return lua_gettop( m_L );
-	}
-
-	void pushTableInteger( int value, int table, int &index )
-	{
-		push( value );
-		lua_rawseti( m_L, table, index++ );
-	}
-
-	void pushTableNumber( float value, int table, int &index )
-	{
-		push( value );
-		lua_rawseti( m_L, table, index++ );
-	}
-
-	// -- NEW push vector of type T as a table
-	template<class T> void push( const vector<T > &pool ) // table
-	{
-		if( pool.size() > 0 )
-		{
-			lua_createtable( m_L, pool.size(), 0 );
-			int newTable = lua_gettop( m_L );
-			int index = 1;
-
-			for( vector<T >::const_iterator cit( pool.begin() ); cit != pool.end(); ++cit )
-			{
-				push( *cit );
-				lua_rawseti( m_L, newTable, index++ );
-			}
-		}
-	}
-	// -- end
-
+	// -- Type asserts (could return values)
 	void assertString( );
 	void assertNumber( );
 	void assertTable( );
 
+	// -- Error routines
 	const char *errorString( );
 
 	void exception( const string & );

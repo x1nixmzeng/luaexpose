@@ -20,3 +20,8 @@ debug
 *.unsuccessfulbuild
 
 # Other
+
+/src/luaexpose/md2
+*.3dc
+Vec3.lua
+

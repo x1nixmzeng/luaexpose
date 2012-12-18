@@ -8,17 +8,19 @@ using std::vector;
 #include <iterator>
 #include <algorithm>
 
-#include "GL\glut.h"
+#include "GL/glut.h"
 
 #define LUA_COMPAT_ALL
 
-#include "lua\lua.hpp"
+#include "lua/lua.hpp"
 
 #include "MyVec.h"
 #include "LuaContextBase.h"
 #include "LuaContext.h"
 
-#pragma region Watch for last write time on a file using the WinAPI
+#include "LuaContextTable.h"
+
+#if defined( WIN32 )
 #include <Windows.h>
 
 bool getWriteTime( const char *strFilename, FILETIME *outWriteTime )
@@ -54,7 +56,9 @@ bool doesTimeDiffer( FILETIME *a, FILETIME *b )
 }
 
 FILETIME g_modTime;
-#pragma endregion
+#endif
+
+#include <stdio.h>
 
 // -- our collection of globals (TOFIX)
 bool g_autoreload( true );
@@ -65,13 +69,26 @@ using namespace Vectors;
 
 #define asFloat(x)	x/255.0f
 
-typedef std::pair<Vec3f, Vec3f >	vertex;
-typedef vector<vertex >				pointList;
+//typedef std::pair<Vec3f, Vec3f >	vertex;
+typedef vector<Vec3f >				pointList;
+
+struct index
+{
+	unsigned short ia, ib, ic;
+};
+
+typedef vector<index >				indexList;
 
 Vec3f lastColour( 0.9f );
 pointList g_points;
+indexList g_indices;
 
-FILE *g_fHandle;
+#include <iostream>
+#include <fstream>
+
+using namespace std;
+ifstream g_file;
+
 // --
 
 #include "exposedTypes.hpp"
@@ -82,7 +99,7 @@ static int myLuaString( lua_State *L )
 	int len = 0;
 
 	if( mylua.countArguments() > 0 )
-		len = mylua.getNumberFromStack( -1 );
+		len = mylua.getInt( -1 );
 
 	std::string str;
 
@@ -92,7 +109,7 @@ static int myLuaString( lua_State *L )
 	{
 		do
 		{
-			if( fread(&mychr,1,1,g_fHandle) && mychr != 0 )
+			if( !( g_file.read( (char*)&mychr, sizeof(char) ).eof() || mychr == 0 ) )
 				str += mychr;
 		}
 		while( mychr );
@@ -101,13 +118,12 @@ static int myLuaString( lua_State *L )
 	{
 		char *mystr = new char[len+1];
 		mystr[len]=0;
-
-		fread(mystr,1,len,g_fHandle);
+		g_file.read( mystr, len );
 		str.assign( mystr, len );
 		delete mystr;
 	}
 
-	mylua.push( str );
+	mylua.pushStr( str );
 
 	return 1;
 }
@@ -151,7 +167,7 @@ static int pushVertex( lua_State *L )
 	float y = lua_tonumber(L, -2);
 	float z = lua_tonumber(L, -1);
 	
-	g_points.push_back( vertex( Vec3f( x, y, z ), lastColour ) );
+	g_points.push_back( Vec3f( x, y, z )/*, lastColour */);
 
 	lua_pop(L,3);
 
@@ -191,9 +207,11 @@ static int setColour( lua_State *L )
 
 bool luaGetVec2( lua_State *L )
 {
-	luaL_checktype(L, 1, LUA_TTABLE);
+	LuaContextBase l(L);
 
-	lua_pushnil(L);
+	l.assertTable();
+
+	l.pushNil();
 
 	// TODO: Determine if there are 2 nodes here and use them without the loop
 	
@@ -202,21 +220,60 @@ bool luaGetVec2( lua_State *L )
 
 	while( lua_next(L, -2) != 0 )
 	{
-		if( lua_isnumber( L, -1 ) )
-		{
-			if( i == 0 )
-				demo.x = lua_tonumber( L, -1 );
-			if( i == 1 )
-				demo.y = lua_tonumber( L, -1 );
-		}
+		if( i == 0 )
+			demo.x = l.getNum( -1 );
+		if( i == 1 )
+			demo.y = l.getNum( -1 );
+		if( i == 2 )
+			demo.z = l.getNum( -1 );
 
-		lua_pop(L, 1);
+		l.pop();
 		++i;
 	}
 
-	g_points.push_back( vertex( demo, lastColour ) );
+	g_points.push_back( demo/*, lastColour */);
 
 	return( true );
+}
+
+static int setTableIndexBuffer( lua_State *L )
+{
+	luaL_checktype(L, 1, LUA_TTABLE);
+
+	lua_pushnil(L);
+
+    while( lua_next(L, -2) != 0 )
+	{
+		{
+			luaL_checktype(L, 1, LUA_TTABLE);
+			lua_pushnil(L);
+
+			index demo;
+			int i(0);
+
+			while( lua_next(L, -2) != 0 )
+			{
+				if( lua_isnumber( L, -1 ) )
+				{
+					if( i == 0 )
+						demo.ia = luaL_checkinteger( L, -1 );
+					if( i == 1 )
+						demo.ib = luaL_checkinteger( L, -1 );
+					if( i == 2 )
+						demo.ic = luaL_checkinteger( L, -1 );
+				}
+
+				lua_pop(L, 1);
+				++i;
+			}
+
+			g_indices.push_back( demo );
+		}
+
+		lua_pop(L, 1);
+	}
+
+	return 0;
 }
 
 static int setVertexBuffer( lua_State *L )
@@ -269,12 +326,11 @@ static int dataSize( lua_State *L )
 {
 	LuaContextBase l(L);
 
-	unsigned int curpos = ftell( g_fHandle );
-	fseek( g_fHandle, 0, SEEK_END );
+	unsigned int curpos = g_file.tellg();
 
-	l.push( ftell( g_fHandle ) );
-
-	fseek( g_fHandle, curpos, SEEK_SET );
+	g_file.seekg( 0, ios::end );
+	l.pushNum( g_file.tellg() );
+	g_file.seekg( curpos, ios::beg );
 
 
 	return 1;
@@ -286,7 +342,8 @@ static int dataSeek( lua_State *L )
 
 	if( l.countArguments() == 1 )
 	{
-		fseek(g_fHandle, l.getNumberFromStack(-1), SEEK_SET);
+		g_file.seekg( l.getInt( -1 ), ios::beg );
+		l.pop();
 	}
 	else
 	{
@@ -299,10 +356,28 @@ static int dataSeek( lua_State *L )
 static int dataPos( lua_State *L )
 {
 	LuaContextBase l(L);
-	l.push( ftell( g_fHandle ) );
+	l.pushNum( g_file.tellg() );
 
 	return 1;
 }
+
+static int dataAssert( lua_State *L )
+{
+	
+	return 1;
+}
+
+class test
+{
+public:
+	static int sampleTest( lua_State *L )
+	{
+		return 0;
+	}
+
+};
+
+test myTest;
 
 bool LuaExposeSetup()
 {
@@ -314,12 +389,14 @@ bool LuaExposeSetup()
 	lua.setGlobal( "LUAEXPOSEVERSTR",	"v0.01" );
 	lua.setGlobal( "LUAEXPOSEVER",		0.01f );
 
+#if defined( WIN32 )
 	// --> This should appear before loadScript incase of error
 	if( !( getWriteTime( BaseScript, &g_modTime ) ) )
 	{
 		printf("SETUP ERROR: Failed to get last mod time\n");
 		return( false );
 	}
+#endif
 
 	if( !( lua.loadScript( BaseScript ) ) )
 	{
@@ -331,13 +408,18 @@ bool LuaExposeSetup()
 	lua.setHook("size",			dataSize);
 	lua.setHook("seek",			dataSeek);
 	lua.setHook("pos",			dataPos);
+	
+	lua.setHook("assert",		myTest.sampleTest );
 
 	// -- Output specific
 	lua.setHook("rotateScene",	setRotations );
 	lua.setHook("pushVtx",		pushVertex );
 	lua.setHook("getVtx",		getVertex );
 	lua.setHook("setVtxColour",	setColour );
-	lua.setHook("pushVtxBuffer",setVertexBuffer );
+
+	// -- Render specific
+	lua.setHook("setFITable",	setTableIndexBuffer );
+	lua.setHook("setVTable",	setVertexBuffer );
 
 	setupExposedTypes();
 
@@ -354,14 +436,12 @@ void LuaExposeSetupCleanup()
 {
 	printf("> Session ending\n");
 
-	if( g_fHandle )
-	{
-		fclose( g_fHandle );
-		g_fHandle = nullptr;
-	}
+	if( g_file.is_open() )
+		g_file.close();
 
 	lua.destroy();
 	g_points.clear();
+	g_indices.clear();
 }
 
 void LuaExposeLoad()
@@ -378,15 +458,28 @@ void LuaExposeLoad()
 
 		if( fname )
 		{
-			g_fHandle = fopen( fname, "rb" );
+			g_file.open( fname, ios::binary );
 
-			if( !( g_fHandle ) )
+			if( !( g_file.is_open() ) )
 			{
 				printf("ERROR: Failed to load data\n");
 				return;
 			}
 
 			lua.call("main");
+
+			// here, check for gl stuff
+
+			printf("> Got %i points\n", g_points.size());
+			printf("> Got %i indexes\n", g_indices.size());
+
+			if( g_indices.size() > 0 )
+			{
+				glEnableClientState(GL_VERTEX_ARRAY);
+				glVertexPointer(3, GL_FLOAT, 4*3, &g_points.at(0).x);
+
+				printf("Setup vertex pointers\n");
+			}
 		}
 		else
 			printf("WARNING: No input file has been specified\n");
@@ -396,8 +489,22 @@ void LuaExposeLoad()
 void callbackDisplay();
 void callbackKeyboard(unsigned char, int, int);
 
+
+int mousex, mousey, mousestate;
+
+enum
+{
+	MOUSESTATE_ROTATE = 0,
+	MOUSESTATE_NONE
+};
+
+bool autoRotate( false );
+
+float rot_y(0.0f), rot_x(0.0f);
+
 void callbackAutoReload( )
 {
+#if defined( WIN32 )
 	if( g_autoreload )
 	{
 		FILETIME localModTime;
@@ -411,6 +518,33 @@ void callbackAutoReload( )
 				FlashWindow( GetConsoleWindow(), true );
 			}
 		}
+	}
+#endif
+}
+
+void callbackMouse(int button, int state, int x, int y )
+{
+	if( button == GLUT_LEFT_BUTTON )
+	{
+		if( state == GLUT_UP )
+		{
+			mousex += x;
+			mousey += y;
+			mousestate = MOUSESTATE_ROTATE;
+		}
+		else
+		if( state == GLUT_DOWN )
+		{
+			mousestate = MOUSESTATE_NONE;
+		}
+	}
+
+	else
+
+	if( button == GLUT_RIGHT_BUTTON )
+	{
+
+		//autoRotate = !autoRotate;
 	}
 }
 
@@ -427,23 +561,28 @@ int main( int argc, char **argv )
 	glutInitWindowSize(800,600);
 	glutInitWindowPosition(100,100);
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-	glShadeModel(GL_SMOOTH);
-
 	glutCreateWindow("luaexpose");
 	glutDisplayFunc(callbackDisplay);
 	glutKeyboardFunc(callbackKeyboard);
 	glutIdleFunc(callbackAutoReload);
+	glutMouseFunc(callbackMouse);
 
 	glClearColor( asFloat(120), asFloat(120), asFloat(130), 1);
-	//gluOrtho2D(0,800,600,0);
-
+	
 	glViewport(0, 0, 800, 600);
 	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+
+	glEnable(GL_DEPTH_TEST);
+	glClearDepth( 1.0f );
+
 	gluPerspective(45.0f, 800.f/600.f, 1.0f, 1000.0f);
 	glMatrixMode(GL_MODELVIEW);
+
+	glLoadIdentity();
+
+	
+
+	//glGenBuffersARB( 1, &m_nVBOVertices );
 
 	LuaExposeLoad();
 
@@ -453,6 +592,50 @@ int main( int argc, char **argv )
 	glutMainLoop();
 	return 0;
 }
+
+#include <sstream>
+using namespace std;
+
+class objRenderer
+{
+	ostringstream m_data;
+public:
+	objRenderer()
+	{
+		m_data << "# Exported from luaexpose\r\n\r\n";
+		m_data.precision(5);
+		m_data << fixed;
+	}
+
+	~objRenderer()
+	{
+		m_data.clear();
+	}
+
+	void Save()
+	{
+		ofstream tmp;
+		tmp.open( "luaexpose_export.obj" );
+		tmp << m_data.str();
+		tmp.close();
+	}
+	
+	void operator()( const Vec3f &v )
+	{
+		m_data << "v ";
+		m_data << v.x << " ";
+		m_data << v.y << " ";
+		m_data << v.z << "\r\n";
+	}
+
+	void operator()( const index &i )
+	{
+		m_data << "f ";
+		m_data << i.ia << " ";
+		m_data << i.ib << " ";
+		m_data << i.ic << "\r\n";
+	}	
+};
 
 void callbackKeyboard(unsigned char keycode, int, int)
 {
@@ -465,8 +648,41 @@ void callbackKeyboard(unsigned char keycode, int, int)
 		// Update screen after new data
 		glutPostRedisplay();
 	}
+	else
+
+	
+	if( keycode == 's' )
+	{
+		printf("> Exporting OBJ..\n");
+
+		objRenderer obj;
+
+		for( pointList::const_iterator cit( g_points.begin() );
+			cit != g_points.end();
+			++cit )
+		{
+			obj( *cit );
+		}
+		
+		for( indexList::const_iterator cit( g_indices.begin() );
+			cit != g_indices.end();
+			++cit )
+		{
+			obj( *cit );
+		}
+
+		obj.Save();
+	}
+
+	else
+
+	if( keycode == 'u' )
+	{
+		glutPostRedisplay();
+	}
 }
 
+/*
 void renderPoints( vertex &point )
 {
 	glColor3f( point.second.x, point.second.y, point.second.z );
@@ -475,26 +691,45 @@ void renderPoints( vertex &point )
 	glVertex3f( point.first.x, point.first.y, point.first.z );
 	glEnd();
 }
+*/
 
 void callbackDisplay()
 {
+	rot_y += 2.0f;
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
 	glLoadIdentity();
-	gluLookAt(0, 0, -50.0f, 0, 0, -1, 0, 1, 0);
+	gluLookAt(0, 50.0f, 0, 0, 0, -1, 0, 1, 0);
+
+	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
 	glPushMatrix();
 
-	glRotatef( g_angle, g_x, g_y, g_z );
+	/*
+	glRotatef(rot_y, 1.0f, 0.0f, 0.0f);
+	glRotatef(rot_x, 0.0f, 1.0f, 0.0f);
+	*/
+
 	glScalef( 10.0f, 10.0f, 10.0f );
+
+	glRotatef( g_angle, g_x, g_y, g_z );
 
 	glPointSize(10);
 
-	std::for_each
-	(
-		g_points.begin(),
-		g_points.end(),
-		renderPoints
-	);
+	if( g_points.size() > 0 )
+	{
+		// https://www.opengl.org/sdk/docs/man/xhtml/glDrawElements.xml
+
+		// type, start, end, count, 
+
+		void *test = &g_indices.at(0);
+
+		glDrawElements(GL_TRIANGLES, g_indices.size() -1, GL_UNSIGNED_SHORT, &g_indices.at(0));
+	}
+	
+	glPopMatrix();
 
 	glutSwapBuffers();
 	glFlush();

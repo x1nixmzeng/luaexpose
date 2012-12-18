@@ -33,6 +33,9 @@
     <ClCompile Include="LuaContextBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LuaContextTable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lua\lauxlib.h">
@@ -65,15 +68,15 @@
     <ClInclude Include="exposedTypes.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="LuaContextTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Vec3.inl">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="expose.lua">
-      <Filter>Source Files\lua</Filter>
-    </None>
-    <None Include="Vec2.lua">
+    <None Include="core.lua">
       <Filter>Source Files\lua</Filter>
     </None>
   </ItemGroup>

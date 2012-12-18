@@ -36,7 +36,7 @@ namespace Vectors
 	{
 		struct
 		{
-			T x, y, z;
+			T x, y, z;//, _padding;
 		};
 
 		T xyz[3];

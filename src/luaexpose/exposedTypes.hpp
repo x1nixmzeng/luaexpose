@@ -33,6 +33,7 @@ template<> inline int template_size<u24Base >( int n )
 template<class T> int l_template_read(lua_State *L)
 {
 	LuaContextBase l(L);
+
 	int args = l.countArguments();
 
 	if( args == 0 || args > 2 )
@@ -40,29 +41,27 @@ template<class T> int l_template_read(lua_State *L)
 
 	if( args == 2 )
 	{
-		int n = l.getIntegerFromStack( -1 );
-		int table = l.createTable(n);
-		int index=1;
+		int n = l.getInt( -1 );
+		LuaContextTable t(L, n);
 
 		for( int i=0; i<n; ++i )
 		{
 			unsigned int val=0;// use this for all types
 
-			int result = fread((void*)&val,	1,sizeof(T),g_fHandle);
-			if (result != sizeof(T))
+			if( g_file.read( (char *)&val, sizeof(T) ).eof() )
 				l.exception("Failed to read data from file for 'read' member function");
 
-			l.pushTableInteger( static_cast<T>(val), table, index );
+			t.pushInt( val );
 		}
 	}
 	else
 	{
 		unsigned int val=0;// use this for all types
 
-		if( !( fread((void*)&val, 1, sizeof(T), g_fHandle ) == sizeof(T) ) )
+		if( g_file.read( (char *)&val, sizeof(T) ).eof() )
 			l.exception("Failed to read data from file for 'read' member function");
 
-		l.push( static_cast<int>( val ) );
+		l.pushInt( val );
 	}
 
 	return 1;
@@ -77,29 +76,27 @@ int l_read_f32(lua_State *L)
 
 	if( args == 2 )
 	{
-		int n = l.getIntegerFromStack( -1 );
-		int table = l.createTable(n);
-		int index=1;
+		int n = l.getInt( -1 );
+		LuaContextTable t(L, n);
 
 		for( int i=0; i<n; ++i )
 		{
 			float val;
 
-			int result = fread((void*)&val,	1,sizeof(float),g_fHandle);
-			if (result != sizeof(float))
+			if( g_file.read( (char*)&val, sizeof(float) ).eof() )
 				l.exception("Failed to read data from file for 'read' member function");
 
-			l.pushTableNumber( val, table, index );
+			t.pushNum( val );
 		}
 	}
 	else
 	{
 		float val;
 
-		if( !( fread((void*)&val, 1, sizeof(val), g_fHandle ) == sizeof(val) ) )
+		if( g_file.read( (char*)&val, sizeof(float) ).eof() )
 			l.exception("Failed to read data from file for 'read' member function");
 
-		l.push( val );
+		l.pushNum( val );
 	}
 
 	return 1;
@@ -119,9 +116,12 @@ int l_template_size(lua_State *L)
 	}
 
 	if( args == 2 )
-		n = l.getIntegerFromStack( -1 );
+	{
+		n = l.getInt( -1 );
+		l.pop();
+	}
 	
-	l.push( template_size<T>( n ) );
+	l.pushInt( template_size<T>( n ) );
 
 	return 1;
 }
@@ -132,7 +132,7 @@ int l_template_skip(lua_State *L)
 {
 	LuaContextBase l(L);
 
-	if( g_fHandle == nullptr )
+	if( !( g_file.good() ) )
 		l.exception("Bad data source");
 
 	int args = l.countArguments();
@@ -144,10 +144,12 @@ int l_template_skip(lua_State *L)
 	}
 
 	if( args == 2 )
-		n = l.getIntegerFromStack( -1 );
+	{
+		n = l.getInt( -1 );
+		l.pop();
+	}
 
-	// No others checks made
-	fseek( g_fHandle, template_size<T>( n ), SEEK_CUR );
+	g_file.seekg( template_size<T>( n ), ios::cur );
 
 	return 0;
 }

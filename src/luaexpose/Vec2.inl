@@ -17,7 +17,7 @@ Vec2( const Vec2& c )
 {}
 
 // Assignment
-Vec2 operator=( const Vec2 &c )
+const Vec2 &operator=( const Vec2 &c )
 {
 	x = c.x;
 	y = c.y;
@@ -31,7 +31,7 @@ bool operator==( const Vec2 &r )
 }
 
 // Add to
-Vec2 operator+=( const Vec2 &c )
+const Vec2 &operator+=( const Vec2 &c )
 {
 	x += c.x;
 	y += c.y;
@@ -39,7 +39,7 @@ Vec2 operator+=( const Vec2 &c )
 }
 
 // Subtract from
-Vec2 operator-=( const Vec2 &c )
+const Vec2 &operator-=( const Vec2 &c )
 {
 	x -= c.x;
 	y -= c.y;
@@ -47,7 +47,7 @@ Vec2 operator-=( const Vec2 &c )
 }
 
 // Multiply by
-Vec2 operator*=( const Vec2 &c )
+const Vec2 &operator*=( const Vec2 &c )
 {
 	x *= c.x;
 	y *= c.y;
@@ -55,7 +55,7 @@ Vec2 operator*=( const Vec2 &c )
 }
 
 // Multiply by (scalar)
-Vec2 operator*=( T val )
+const Vec2 &operator*=( T val )
 {
 	x *= val;
 	y *= val;
@@ -63,7 +63,7 @@ Vec2 operator*=( T val )
 }
 
 // Divide by
-Vec2 operator/=( const Vec2 &c )
+const Vec2 &operator/=( const Vec2 &c )
 {
 	x /= c.x;
 	y /= c.y;
@@ -71,32 +71,32 @@ Vec2 operator/=( const Vec2 &c )
 }
 
 // Divide by (scalar)
-Vec2 operator/=( T val )
+const Vec2 &operator/=( T val )
 {
 	x /= val;
 	y /= val;
 	return( *this );
 }
 
-Vec2 operator+( const Vec2 &r )
+const Vec2 &operator+( const Vec2 &r )
 {
 	*this += r;
 	return( *this );
 }
 
-Vec2 operator-( const Vec2 &r )
+const Vec2 &operator-( const Vec2 &r )
 {
 	*this -= r;
 	return( *this );
 }
 
-Vec2 operator*( const Vec2 &r )
+const Vec2 &operator*( const Vec2 &r )
 {
 	*this *= r;
 	return( *this );
 }
 
-Vec2 operator/( const Vec2 &r )
+const Vec2 &operator/( const Vec2 &r )
 {
 	*this /= r;
 	return( *this );

@@ -8,21 +8,6 @@ LuaContextBase::LuaContextBase( lua_State* existingL )
 	: m_L( existingL )
 {}
 
-/*
-bool LuaContextBase::hasGlobal( const string &strVal )
-{
-	return( hasGlobal( strVal.c_str() ) );
-}
-
-bool LuaContextBase::hasGlobal( const char *strVal )
-{
-	//lua_getglobal( m_L, strVal );
-
-	// NOT IMPLEMENTED
-
-	return( false );
-}*/
-
 void LuaContextBase::call( const char * strFunc )
 {
 	lua_getglobal( m_L, strFunc );
@@ -50,25 +35,25 @@ int LuaContextBase::countArguments( )
 	return( lua_gettop( m_L ) );
 }
 
-const char *LuaContextBase::getStringFromStack( int stackPos )
+const char *LuaContextBase::getCStr( int stackPos )
 {
 	// Get a string from a stack position
 
-	return( lua_tostring( m_L, stackPos ) );
+	return( luaL_checkstring( m_L, stackPos ) );
 }
 
-float LuaContextBase::getNumberFromStack( int stackPos )
+float LuaContextBase::getNum( int stackPos )
 {
 	// Get a number from a stack position
 
-	return( static_cast<float>( lua_tonumber( m_L, stackPos ) ) );
+	return( static_cast<float>( luaL_checknumber( m_L, stackPos ) ) );
 }
 
-int LuaContextBase::getIntegerFromStack( int stackPos )
+int LuaContextBase::getInt( int stackPos )
 {
 	// Get a integer from a stack position
 
-	return( lua_tointeger( m_L, stackPos ) );
+	return( luaL_checkinteger( m_L, stackPos ) );
 }
 
 void LuaContextBase::pop( )
@@ -78,35 +63,35 @@ void LuaContextBase::pop( )
 	lua_pop( m_L, 1 );
 }
 
-void LuaContextBase::push( const string &strVal )
+void LuaContextBase::pushStr( const string &strVal )
 {
 	// Add a string to the stack
 
-	push( strVal.c_str() );
+	pushCStr( strVal.c_str() );
 }
 
-void LuaContextBase::push( const char *strVal )
+void LuaContextBase::pushCStr( const char *strVal )
 {
 	// Add a string to the stack
 
 	lua_pushstring( m_L, strVal );
 }
 
-void LuaContextBase::push( float fVal )
+void LuaContextBase::pushNum( float fVal )
 {
 	// Add a number to the stack
 
 	lua_pushnumber( m_L, fVal );
 }
 
-void LuaContextBase::push( int iVal )
+void LuaContextBase::pushInt( int iVal )
 {
 	// Add a integer to the stack
 
 	lua_pushinteger( m_L, iVal );
 };
 
-void LuaContextBase::push( )
+void LuaContextBase::pushNil( )
 {
 	// Add a nil value to the stack
 
@@ -138,7 +123,7 @@ const char *LuaContextBase::errorString( )
 {
 	// Get the last error
 
-	return( getStringFromStack( -1 ) );
+	return( getCStr( -1 ) );
 }
 
 void LuaContextBase::exception( const string &strError )
@@ -150,6 +135,6 @@ void LuaContextBase::exception( const char *strError )
 {
 	// Raise an error
 
-	push( strError );
+	pushStr( strError );
 	lua_error( m_L );
 }
