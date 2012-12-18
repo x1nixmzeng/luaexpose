@@ -45,7 +45,7 @@ function main()
 		table.insert(fdata,vec3)
 	end
 
-	rotateScene(180, 0, -1, 1)
+	--rotateScene(180, 0, -1, 1)
 
 	setVTable( vdata )		--> must be first
 	setFITable( fdata )		--> todo: face type (tri_strip, etc)

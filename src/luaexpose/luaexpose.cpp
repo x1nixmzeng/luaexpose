@@ -468,18 +468,21 @@ void LuaExposeLoad()
 
 			lua.call("main");
 
-			// here, check for gl stuff
+			// -- Setup our persistant data buffers
+			// See http://www.opengl.org/sdk/docs/man2/xhtml/glEnableClientState.xml
 
-			printf("> Got %i points\n", g_points.size());
-			printf("> Got %i indexes\n", g_indices.size());
-
-			if( g_indices.size() > 0 )
+			if( !( g_indices.empty() ) ) // If we have indices, we can store the points
 			{
-				glEnableClientState(GL_VERTEX_ARRAY);
-				glVertexPointer(3, GL_FLOAT, 4*3, &g_points.at(0).x);
+				//glEnableClientState( GL_VERTEX_ARRAY );
+				//glVertexPointer(3, GL_FLOAT, 0, &g_points.at(0) );
+				printf("> Got %i points\n", g_points.size());
 
-				printf("Setup vertex pointers\n");
+				//glEnable( GL_VERTEX_ARRAY );
+				//glVertexPointer( 3, GL_SHORT, 0, &g_indices.at(0) );
+				// Todo: update my gl library so i can use buffers - GL_ARRAY_BUFFER
 			}
+			//else
+				// glDisableClientState( GL_VERTEX_ARRAY );
 		}
 		else
 			printf("WARNING: No input file has been specified\n");
@@ -500,7 +503,7 @@ enum
 
 bool autoRotate( false );
 
-float rot_y(0.0f), rot_x(0.0f);
+float rot_y(0.0f), rot_x(0.0f), rot_z(0.0f);
 
 void callbackAutoReload( )
 {
@@ -637,6 +640,8 @@ public:
 	}	
 };
 
+float g_scaleScalar( 10.0f );
+
 void callbackKeyboard(unsigned char keycode, int, int)
 {
 	if( keycode == 'r' )
@@ -678,55 +683,70 @@ void callbackKeyboard(unsigned char keycode, int, int)
 
 	if( keycode == 'u' )
 	{
+		rot_x += 2.0f;
+		glutPostRedisplay();
+	}
+
+	else
+
+	if( keycode == 'q' || keycode == 'a' )
+	{
+
+		if( keycode == 'q' )
+			g_scaleScalar += 2.0f;
+		else
+			g_scaleScalar -= 2.0f;
+
 		glutPostRedisplay();
 	}
 }
 
-/*
-void renderPoints( vertex &point )
+void renderPoint( const Vec3f &p )
 {
-	glColor3f( point.second.x, point.second.y, point.second.z );
-
 	glBegin(GL_POINTS);
-	glVertex3f( point.first.x, point.first.y, point.first.z );
+		glVertex3f( p.x, p.y, p.z );
 	glEnd();
 }
-*/
 
 void callbackDisplay()
 {
-	rot_y += 2.0f;
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 
-	glLoadIdentity();
-	gluLookAt(0, 50.0f, 0, 0, 0, -1, 0, 1, 0);
+	glDisable( GL_CULL_FACE );
 
-	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	glLoadIdentity();
+	gluLookAt(40.0f, 20.0f, -40.0f, 0, 0, -1, 0, 1, 0);
+
+	//glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
 	glPushMatrix();
 
-	/*
-	glRotatef(rot_y, 1.0f, 0.0f, 0.0f);
-	glRotatef(rot_x, 0.0f, 1.0f, 0.0f);
-	*/
+	//glRotatef(rot_y, 1.0f, 0.0f, 0.0f);
+	glRotatef(rot_x, 0.0f, 1.0f, 0.0f); // this is actually y
+	//glRotatef(rot_z, 0.0f, 0.0f, 1.0f);
 
-	glScalef( 10.0f, 10.0f, 10.0f );
+	glScalef( g_scaleScalar, g_scaleScalar, g_scaleScalar );
 
 	glRotatef( g_angle, g_x, g_y, g_z );
 
-	glPointSize(10);
-
-	if( g_points.size() > 0 )
+	/*
+	if( g_indices.size() > 0 )
 	{
-		// https://www.opengl.org/sdk/docs/man/xhtml/glDrawElements.xml
+		// This method will only work with OpenGl 3.1+ (so I have an outdated version)
+		//glDrawElements(GL_TRIANGLES, g_indices.size() -1, GL_UNSIGNED_SHORT, &g_indices.at(0).ia);
+	}
+	else
+		*/
+	{
+		glPointSize(5);
 
-		// type, start, end, count, 
-
-		void *test = &g_indices.at(0);
-
-		glDrawElements(GL_TRIANGLES, g_indices.size() -1, GL_UNSIGNED_SHORT, &g_indices.at(0));
+		for_each
+		(
+			g_points.begin(),
+			g_points.end(),
+			renderPoint
+		);
 	}
 	
 	glPopMatrix();
