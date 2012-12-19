@@ -14,6 +14,12 @@ void LuaContextBase::call( const char * strFunc )
 	lua_call( m_L, 0, 0 );
 }
 
+bool LuaContextBase::hasFunction( const char *strFunc )
+{
+	lua_getglobal(m_L, strFunc);
+	return( lua_type( m_L, -1 ) == LUA_TFUNCTION );
+}
+
 int LuaContextBase::getGlobalInteger( const char *strVal )
 {
 	lua_getglobal( m_L, strVal );

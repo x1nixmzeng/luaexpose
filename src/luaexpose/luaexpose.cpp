@@ -83,6 +83,17 @@ Vec3f lastColour( 0.9f );
 pointList g_points;
 indexList g_indices;
 
+enum RENDERAS
+{
+	RENDERAS_POINTS = 0,
+	RENDERAS_LINES,
+	RENDERAS_FACES,
+
+	RENDERAS_MAX
+};
+
+RENDERAS g_renderType = RENDERAS_POINTS;
+
 #include <iostream>
 #include <fstream>
 
@@ -367,6 +378,7 @@ static int dataAssert( lua_State *L )
 	return 1;
 }
 
+/*
 class test
 {
 public:
@@ -378,6 +390,7 @@ public:
 };
 
 test myTest;
+*/
 
 bool LuaExposeSetup()
 {
@@ -408,8 +421,6 @@ bool LuaExposeSetup()
 	lua.setHook("size",			dataSize);
 	lua.setHook("seek",			dataSeek);
 	lua.setHook("pos",			dataPos);
-	
-	lua.setHook("assert",		myTest.sampleTest );
 
 	// -- Output specific
 	lua.setHook("rotateScene",	setRotations );
@@ -450,6 +461,7 @@ void LuaExposeLoad()
 	lastColour = Vec3f( 0.9f );
 	g_angle = 0.0f;
 	g_x = g_y = g_z = 0.0f;
+	g_renderType = RENDERAS_POINTS;
 	// --
 
 	if( LuaExposeSetup() )
@@ -458,12 +470,31 @@ void LuaExposeLoad()
 
 		if( fname )
 		{
+			if( !( lua.hasFunction("main") ) )
+			{
+				printf("ERROR: No main() function declared in Lua script!\n");
+				return;
+			}
+
 			g_file.open( fname, ios::binary );
 
 			if( !( g_file.is_open() ) )
 			{
 				printf("ERROR: Failed to load data\n");
 				return;
+			}
+
+			const string renderType( lua.getGlobalString("show") );
+
+			if( !( renderType.empty() ) )
+			{
+				if( renderType == "points" )		g_renderType = RENDERAS_POINTS;
+				else
+				if( renderType == "lines" )			g_renderType = RENDERAS_LINES;
+				else
+				if( renderType == "faces" )			g_renderType = RENDERAS_FACES;
+				else
+				printf("WARNING: Unknown render type \"%s\"\n", renderType.c_str() );
 			}
 
 			lua.call("main");
@@ -727,7 +758,17 @@ void callbackDisplay()
 	glLoadIdentity();
 	gluLookAt(40.0f, 20.0f, -40.0f, 0, 0, -1, 0, 1, 0);
 
-	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	switch( g_renderType )
+	{
+		case RENDERAS_LINES :
+			glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+			break;
+		case RENDERAS_FACES:
+			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			break;
+		default:
+			glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
+	}
 
 	glPushMatrix();
 

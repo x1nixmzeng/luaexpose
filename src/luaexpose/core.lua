@@ -3,11 +3,11 @@
 
 ------------------------------------------
 file = "Shaiya/demf_boots001.3DC"
+show = "points" -- points/lines/faces
 ------------------------------------------
 
 function log(...) io.write(...) end
 
-assert( false );
 
 function main()
 	log("Got ", size(), " bytes!\n")

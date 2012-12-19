@@ -36,6 +36,7 @@ public:
 
 	// -- 
 	void call( const char * );
+	bool hasFunction( const char * );
 
 	// -- Get global values (must exist)
 	int getGlobalInteger( const char * );
