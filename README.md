@@ -15,4 +15,4 @@ See the [wiki](luaexpose/wiki) to learn how to get started. Scripts are stored i
 
 Consider how much easier it is to load data [from this tutorial](http://forum.xentax.com/viewtopic.php?f=29&t=3739) with **luaexpose**!
 
-![Screenshot](http://i.imgur.com/OloGe.png)
+![Screenshot](http://i.imgur.com/X6bbW.png)
