@@ -18,6 +18,8 @@ using namespace std;
 
 class LuaContextBase
 {
+private:
+	int m_stackPos;
 protected:
 	lua_State* m_L;
 public:
@@ -49,10 +51,7 @@ public:
 	void pushInt( int );
 	void pushNil( );
 
-	// -- Table routines (superseeded - see LuaContextTable)
-	//int createTable( int elements );
-	//void pushTableInteger( int, int, int & );
-	//void pushTableNumber( float, int, int & );
+	int pushedItemCount() const;
 
 	// -- Type asserts (could return values)
 	void assertString( );

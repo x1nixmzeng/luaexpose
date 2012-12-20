@@ -20,6 +20,9 @@ using std::vector;
 
 #include "LuaContextTable.h"
 
+#define DUPETHIS(x)	(x),(x)
+#define TRIPTHIS(x) (x),(x),(x)
+
 #if defined( WIN32 )
 #include <Windows.h>
 
@@ -104,6 +107,7 @@ RENDERAS g_renderType = RENDERAS_POINTS;
 
 using namespace std;
 ifstream g_file;
+std::streampos g_fileSize;
 
 // --
 
@@ -111,11 +115,11 @@ ifstream g_file;
 
 static int myLuaString( lua_State *L )
 {
-	LuaContextBase mylua( L );
+	LuaContextBase l( L );
 	int len = 0;
 
-	if( mylua.countArguments() > 0 )
-		len = mylua.getInt( -1 );
+	if( l.countArguments() > 0 )
+		len = l.getInt( -1 );
 
 	std::string str;
 
@@ -139,9 +143,9 @@ static int myLuaString( lua_State *L )
 		delete mystr;
 	}
 
-	mylua.pushStr( str );
+	l.pushStr( str );
 
-	return 1;
+	return l.pushedItemCount();
 }
 
 void setupExposedTypes()
@@ -343,14 +347,9 @@ static int dataSize( lua_State *L )
 {
 	LuaContextBase l(L);
 
-	unsigned int curpos = g_file.tellg();
-
-	g_file.seekg( 0, ios::end );
-	l.pushNum( g_file.tellg() );
-	g_file.seekg( curpos, ios::beg );
-
-
-	return 1;
+	// Pushes the cached filesize to the Lua stack
+	l.pushInt( g_fileSize.seekpos() );
+	return l.pushedItemCount();
 }
 
 static int dataSeek( lua_State *L )
@@ -367,36 +366,17 @@ static int dataSeek( lua_State *L )
 		l.exception("Expected 1 argument for 'seek' function");
 	}
 
-	return 1;
+	return 0;
 }
 
 static int dataPos( lua_State *L )
 {
 	LuaContextBase l(L);
-	l.pushNum( g_file.tellg() );
 
-	return 1;
+	// Pushes the current file position to the Lua stack
+	l.pushNum( g_file.tellg().seekpos() );
+	return l.pushedItemCount();
 }
-
-static int dataAssert( lua_State *L )
-{
-	
-	return 1;
-}
-
-/*
-class test
-{
-public:
-	static int sampleTest( lua_State *L )
-	{
-		return 0;
-	}
-
-};
-
-test myTest;
-*/
 
 bool LuaExposeSetup()
 {
@@ -489,27 +469,45 @@ void LuaExposeLoad()
 	{
 		const char *fname = lua.getGlobalString("file");
 
+		// Check that the gobal has been set in the Lua script
 		if( fname )
 		{
+			// Check the main function is defined in the Lua script
 			if( !( lua.hasFunction("main") ) )
 			{
+				// Fatal error as nothing can be run
 				printf("ERROR: No main() function declared in Lua script!\n");
 				return;
 			}
 
-			g_file.open( fname, ios::binary );
+			printf("> Source file is \"%s\"\n", fname );
+
+			// Open the file and seek to the end (to calculate the file size)
+			g_file.open( fname, ios::binary | ios::ate );
 
 			if( !( g_file.is_open() ) )
 			{
+				// Fatal error as there is no data to work with
 				printf("ERROR: Failed to load data\n");
 				return;
 			}
 
+			// Cache the current file position and sek to the beginning
+			g_fileSize = g_file.tellg();
+			g_file.seekg( 0, ios::beg );
+
+			if( g_fileSize.seekpos() == 0 )
+			{
+				printf("WARNING: There is no data (as the file is empty)\n");
+			}
+
+			// Attempt to set the render state
 			int renderType = lua.getGlobalInteger("show");
 
 			if( renderType > RENDERAS_MIN && renderType < RENDERAS_MAX )
 				g_renderType = (RENDERAS)renderType;
 
+			// Call the main Lua script data parsing function
 			lua.call("main");
 
 			// -- Setup our persistant data buffers
@@ -689,7 +687,7 @@ float g_scaleScalar( 10.0f );
 
 void callbackKeyboard(unsigned char keycode, int, int)
 {
-	if( keycode == 'r' )
+	if( keycode == 'r' || keycode == 'R' )
 	{
 		printf("> Session reloading\n");
 		LuaExposeSetupCleanup();
@@ -701,7 +699,7 @@ void callbackKeyboard(unsigned char keycode, int, int)
 	else
 
 	
-	if( keycode == 's' )
+	if( keycode == 's' || keycode == 'S' )
 	{
 		printf("> Exporting OBJ..\n");
 
@@ -726,7 +724,7 @@ void callbackKeyboard(unsigned char keycode, int, int)
 
 	else
 
-	if( keycode == 'u' )
+	if( keycode == 'u' || keycode == 'U' )
 	{
 		rot_x += 2.0f;
 		glutPostRedisplay();
@@ -734,10 +732,11 @@ void callbackKeyboard(unsigned char keycode, int, int)
 
 	else
 
-	if( keycode == 'q' || keycode == 'a' )
+	if( keycode == 'q' || keycode == 'Q'
+		|| keycode == 'a' || keycode == 'A' )
 	{
 
-		if( keycode == 'q' )
+		if( keycode == 'q' || keycode == 'Q' )
 			g_scaleScalar += 2.0f;
 		else
 			g_scaleScalar -= 2.0f;
@@ -762,6 +761,40 @@ void renderFace( const index &i )
 	glEnd();
 }
 
+void renderGrid( int width, int height )
+{
+	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+
+	glBegin( GL_LINES );
+	glColor3f( TRIPTHIS( 0.4f ) );
+	
+	for( int x = -width; x <= width; ++x )
+	{
+		if( !( x == 0 ) )
+		{
+			glVertex3f( x, 0.0f,-height );
+			glVertex3f( x, 0.0f, height );
+		}
+	}
+
+	for( int z = -height; z <= height; ++z )
+	{
+		if( !( z == 0 ) )
+		{
+			glVertex3f(-width, 0.0f, z );
+			glVertex3f( width, 0.0f, z );
+		}
+	}
+
+	glColor3f( TRIPTHIS( 0.2f ) );
+	glVertex3f( width, 0.0f, 0.0f );
+	glVertex3f(-width, 0.0f, 0.0f );
+	glVertex3f( 0.0f, 0.0f, height );
+	glVertex3f( 0.0f, 0.0f,-height );
+
+	glEnd();
+}
+
 void callbackDisplay()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -771,7 +804,19 @@ void callbackDisplay()
 
 	glLoadIdentity();
 	gluLookAt(40.0f, 20.0f, -40.0f, 0, 0, -1, 0, 1, 0);
-	
+
+	glPushMatrix();
+
+	//glRotatef(rot_y, 1.0f, 0.0f, 0.0f);
+	glRotatef(rot_x, 0.0f, 1.0f, 0.0f); // this is actually y
+	//glRotatef(rot_z, 0.0f, 0.0f, 1.0f);
+
+	glScalef( TRIPTHIS( g_scaleScalar ) );
+
+	glRotatef( g_angle, g_x, g_y, g_z );
+
+	renderGrid( DUPETHIS( 5 ) );
+
 	switch( g_renderType )
 	{
 		case RENDERAS_LINES :
@@ -794,16 +839,6 @@ void callbackDisplay()
 		}
 	}
 
-	glPushMatrix();
-
-	//glRotatef(rot_y, 1.0f, 0.0f, 0.0f);
-	glRotatef(rot_x, 0.0f, 1.0f, 0.0f); // this is actually y
-	//glRotatef(rot_z, 0.0f, 0.0f, 1.0f);
-
-	glScalef( g_scaleScalar, g_scaleScalar, g_scaleScalar );
-
-	glRotatef( g_angle, g_x, g_y, g_z );
-
 	/*
 	if( g_indices.size() > 0 )
 	{
@@ -813,8 +848,6 @@ void callbackDisplay()
 	else
 		*/
 	{
-		glPointSize(5);
-
 		for_each
 		(
 			g_indices.begin(),

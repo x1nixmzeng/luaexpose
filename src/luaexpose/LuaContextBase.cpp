@@ -1,11 +1,13 @@
 #include "LuaContextBase.h"
 
 LuaContextBase::LuaContextBase( )
-	: m_L( nullptr )
+	: m_stackPos( 0 )
+	, m_L( nullptr )
 {}
 
 LuaContextBase::LuaContextBase( lua_State* existingL )
-	: m_L( existingL )
+	: m_stackPos( 0 )
+	, m_L( existingL )
 {}
 
 void LuaContextBase::call( const char * strFunc )
@@ -67,6 +69,7 @@ void LuaContextBase::pop( )
 	// Remove an item from the stack
 
 	lua_pop( m_L, 1 );
+	--m_stackPos;
 }
 
 void LuaContextBase::pushStr( const string &strVal )
@@ -74,6 +77,7 @@ void LuaContextBase::pushStr( const string &strVal )
 	// Add a string to the stack
 
 	pushCStr( strVal.c_str() );
+	++m_stackPos;
 }
 
 void LuaContextBase::pushCStr( const char *strVal )
@@ -81,6 +85,7 @@ void LuaContextBase::pushCStr( const char *strVal )
 	// Add a string to the stack
 
 	lua_pushstring( m_L, strVal );
+	++m_stackPos;
 }
 
 void LuaContextBase::pushNum( float fVal )
@@ -88,6 +93,7 @@ void LuaContextBase::pushNum( float fVal )
 	// Add a number to the stack
 
 	lua_pushnumber( m_L, fVal );
+	++m_stackPos;
 }
 
 void LuaContextBase::pushInt( int iVal )
@@ -95,6 +101,7 @@ void LuaContextBase::pushInt( int iVal )
 	// Add a integer to the stack
 
 	lua_pushinteger( m_L, iVal );
+	++m_stackPos;
 };
 
 void LuaContextBase::pushNil( )
@@ -102,6 +109,12 @@ void LuaContextBase::pushNil( )
 	// Add a nil value to the stack
 
 	lua_pushnil( m_L );
+	++m_stackPos;
+}
+
+int LuaContextBase::pushedItemCount( ) const
+{
+	return( m_stackPos );
 }
 
 void LuaContextBase::assertString( )

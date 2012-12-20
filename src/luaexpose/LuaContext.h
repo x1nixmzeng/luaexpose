@@ -40,21 +40,16 @@ public:
 };
 
 /*
-	LuaContext::setClassHook helpers
+	Bind a public class function member to a Lua context
+		(to the effect of creating a static run-time method)
 
-	Creates a static list of functions for the setClassHook function
-	Example:
-		LUA_CLASSDESCBEGIN(Vec2f)
-			LUA_CLASSDESCADD("new", luaVec2fNew)
-			LUA_CLASSDESCADD("__gc", luaVec2fDestroy)
-		LUA_CLASSDESCEND
-
-		LUA_CLASSDESCAPPLY(Vec2f)
+	LIMITATIONS
+		The class instance must be static/global
+		The target function must be templated
+			(which gives it a compile-time parameter to the class)
 */
 
-#define LUA_CLASSDESCBEGIN(c)	static luaL_Reg sLuaClass_##c[] = {
-#define LUA_CLASSDESCEND		{NULL,NULL} };
-#define LUA_CLASSDESCADD(n,c)	{ n, c },
-#define LUA_CLASSDESCAPPLY(c)	g_lua.setClassHook(#c, sLuaClass_##c);
+#define LUA_BINDCLASSMETHOD(lua,c,cfunc,cinst) \
+	lua.setHook( #cfunc, c::cfunc<cinst > )
 
 #endif
