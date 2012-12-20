@@ -3,7 +3,11 @@
 
 ------------------------------------------
 file = "Shaiya/demf_boots001.3DC"
-show = "points" -- points/lines/faces
+show = SHOW_LINES_AND_FACES
+
+faceColor( 20, 20, 20 )
+lineColor( 100, 100, 100 )
+
 ------------------------------------------
 
 function log(...) io.write(...) end

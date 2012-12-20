@@ -79,15 +79,20 @@ struct index
 
 typedef vector<index >				indexList;
 
-Vec3f lastColour( 0.9f );
+Vec3f colPoints(0.3f );// black
+Vec3f colLines( 0.6f );// black
+Vec3f colFaces( 1.0f );// white
 pointList g_points;
 indexList g_indices;
 
 enum RENDERAS
 {
-	RENDERAS_POINTS = 0,
+	RENDERAS_MIN = 0,
+
+	RENDERAS_POINTS,
 	RENDERAS_LINES,
 	RENDERAS_FACES,
+	RENDERAS_MIXED,
 
 	RENDERAS_MAX
 };
@@ -200,16 +205,17 @@ static int setRotations( lua_State *L )
 }
 
 // -- converts from rgb
+template< Vec3f& whichColour >
 static int setColour( lua_State *L )
 {
 	float r = lua_tonumber(L, -3);
 	float g = lua_tonumber(L, -2);
 	float b = lua_tonumber(L, -1);
 
-	lastColour.xyz[0] = r;
-	lastColour.xyz[1] = g;
-	lastColour.xyz[2] = b;
-	lastColour /= 255.0f;
+	whichColour.xyz[0] = r;
+	whichColour.xyz[1] = g;
+	whichColour.xyz[2] = b;
+	whichColour /= 255.0f;
 
 	lua_pop(L,3);
 
@@ -417,6 +423,12 @@ bool LuaExposeSetup()
 		return( false );
 	}
 
+	// -- Other globals
+	lua.setGlobal("SHOW_POINTS",			RENDERAS_POINTS );
+	lua.setGlobal("SHOW_LINES",				RENDERAS_LINES );
+	lua.setGlobal("SHOW_FACES",				RENDERAS_FACES );
+	lua.setGlobal("SHOW_LINES_AND_FACES",	RENDERAS_MIXED );
+
 	// -- Data specific
 	lua.setHook("size",			dataSize);
 	lua.setHook("seek",			dataSeek);
@@ -426,7 +438,14 @@ bool LuaExposeSetup()
 	lua.setHook("rotateScene",	setRotations );
 	lua.setHook("pushVtx",		pushVertex );
 	lua.setHook("getVtx",		getVertex );
-	lua.setHook("setVtxColour",	setColour );
+	
+	// (colours)
+	lua.setHook("pointColour",	setColour<colPoints> );
+	lua.setHook("pointColor",	setColour<colPoints> );
+	lua.setHook("lineColour",	setColour<colLines> );
+	lua.setHook("lineColor",	setColour<colLines> );
+	lua.setHook("faceColour",	setColour<colFaces> );
+	lua.setHook("faceColor",	setColour<colFaces> );
 
 	// -- Render specific
 	lua.setHook("setFITable",	setTableIndexBuffer );
@@ -458,7 +477,9 @@ void LuaExposeSetupCleanup()
 void LuaExposeLoad()
 {
 	// -- Setup default values here
-	lastColour = Vec3f( 0.9f );
+	colPoints = Vec3f(0.3f );
+	colLines = Vec3f( 0.6f );
+	colFaces = Vec3f( 1.0f );
 	g_angle = 0.0f;
 	g_x = g_y = g_z = 0.0f;
 	g_renderType = RENDERAS_POINTS;
@@ -484,18 +505,10 @@ void LuaExposeLoad()
 				return;
 			}
 
-			const string renderType( lua.getGlobalString("show") );
+			int renderType = lua.getGlobalInteger("show");
 
-			if( !( renderType.empty() ) )
-			{
-				if( renderType == "points" )		g_renderType = RENDERAS_POINTS;
-				else
-				if( renderType == "lines" )			g_renderType = RENDERAS_LINES;
-				else
-				if( renderType == "faces" )			g_renderType = RENDERAS_FACES;
-				else
-				printf("WARNING: Unknown render type \"%s\"\n", renderType.c_str() );
-			}
+			if( renderType > RENDERAS_MIN && renderType < RENDERAS_MAX )
+				g_renderType = (RENDERAS)renderType;
 
 			lua.call("main");
 
@@ -514,6 +527,7 @@ void LuaExposeLoad()
 			}
 			//else
 				// glDisableClientState( GL_VERTEX_ARRAY );
+
 		}
 		else
 			printf("WARNING: No input file has been specified\n");
@@ -757,17 +771,27 @@ void callbackDisplay()
 
 	glLoadIdentity();
 	gluLookAt(40.0f, 20.0f, -40.0f, 0, 0, -1, 0, 1, 0);
-
+	
 	switch( g_renderType )
 	{
 		case RENDERAS_LINES :
+		{
+			glColor3f( colLines.x, colLines.y, colLines.z );
 			glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 			break;
+		}
+		case RENDERAS_MIXED:
 		case RENDERAS_FACES:
+		{
+			glColor3f( colFaces.x, colFaces.y, colFaces.z );
 			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 			break;
+		}
 		default:
+		{
+			glColor3f( colPoints.x, colPoints.y, colPoints.z );
 			glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
+		}
 	}
 
 	glPushMatrix();
@@ -807,6 +831,19 @@ void callbackDisplay()
 		*/
 	}
 	
+	if( g_renderType == RENDERAS_MIXED )
+	{
+		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+		glColor3f( colLines.x, colLines.y, colLines.z );
+
+		for_each
+		(
+			g_indices.begin(),
+			g_indices.end(),
+			renderFace
+		);
+	}
+
 	glPopMatrix();
 
 	glutSwapBuffers();
