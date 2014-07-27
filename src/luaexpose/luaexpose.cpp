@@ -85,8 +85,10 @@ typedef vector<index >				indexList;
 Vec3f colPoints(0.3f );// black
 Vec3f colLines( 0.6f );// black
 Vec3f colFaces( 1.0f );// white
-pointList g_points;
-indexList g_indices;
+
+vector<pointList> g_modelVerts;
+vector<indexList> g_modelInd;
+Vec3f g_midPoint;
 
 enum RENDERAS
 {
@@ -187,7 +189,9 @@ static int pushVertex( lua_State *L )
 	float y = lua_tonumber(L, -2);
 	float z = lua_tonumber(L, -1);
 	
-	g_points.push_back( Vec3f( x, y, z )/*, lastColour */);
+  // not implemented yet
+
+	//g_points.push_back( Vec3f( x, y, z )/*, lastColour */);
 
 	lua_pop(L,3);
 
@@ -252,7 +256,7 @@ bool luaGetVec2( lua_State *L )
 		++i;
 	}
 
-	g_points.push_back( demo/*, lastColour */);
+  g_modelVerts.back().push_back(demo); // lastColour
 
 	return( true );
 }
@@ -263,36 +267,39 @@ static int setTableIndexBuffer( lua_State *L )
 
 	lua_pushnil(L);
 
-    while( lua_next(L, -2) != 0 )
+  indexList tmp;
+
+  while( lua_next(L, -2) != 0 )
 	{
+		luaL_checktype(L, 1, LUA_TTABLE);
+		lua_pushnil(L);
+
+		index demo;
+		int i(0);
+
+		while( lua_next(L, -2) != 0 )
 		{
-			luaL_checktype(L, 1, LUA_TTABLE);
-			lua_pushnil(L);
-
-			index demo;
-			int i(0);
-
-			while( lua_next(L, -2) != 0 )
+			if( lua_isnumber( L, -1 ) )
 			{
-				if( lua_isnumber( L, -1 ) )
-				{
-					if( i == 0 )
-						demo.ia = luaL_checkinteger( L, -1 );
-					if( i == 1 )
-						demo.ib = luaL_checkinteger( L, -1 );
-					if( i == 2 )
-						demo.ic = luaL_checkinteger( L, -1 );
-				}
-
-				lua_pop(L, 1);
-				++i;
+				if( i == 0 )
+					demo.ia = luaL_checkinteger( L, -1 );
+				if( i == 1 )
+					demo.ib = luaL_checkinteger( L, -1 );
+				if( i == 2 )
+					demo.ic = luaL_checkinteger( L, -1 );
 			}
 
-			g_indices.push_back( demo );
+			lua_pop(L, 1);
+			++i;
 		}
+
+		tmp.push_back( demo );
 
 		lua_pop(L, 1);
 	}
+
+  // if not null
+  g_modelInd.push_back(tmp);
 
 	return 0;
 }
@@ -303,7 +310,9 @@ static int setVertexBuffer( lua_State *L )
 
 	lua_pushnil(L);
 
-    while( lua_next(L, -2) != 0 )
+  g_modelVerts.resize(g_modelVerts.size() + 1);
+
+  while( lua_next(L, -2) != 0 )
 	{
 		luaGetVec2( L );
 
@@ -313,34 +322,56 @@ static int setVertexBuffer( lua_State *L )
 	return 0;
 }
 
-static int getVertex( lua_State *L )
+//static int getVertex( lua_State *L )
+//{
+//	if( lua_gettop(L) < 1 )
+//	{
+//		lua_pushstring(L, "getVtx expects 1 parameter (vertex index)");
+//		lua_error(L);
+//
+//		return 1; // i guess?
+//	}
+//
+//	int indx = lua_tointeger(L, -1);
+//	
+//	if( indx < 0 || indx >= g_points.size() )
+//	{
+//		lua_pushstring(L, "Supplied vertex index value was invalid");
+//		lua_error(L);
+//
+//		return 1;
+//	}
+//	/*
+//	const Vec2f &point = g_points.at( indx ).first;
+//
+//	lua_pushnumber( L, point.x );
+//	lua_pushnumber( L, point.y );
+//
+//	return 2;
+//	*/
+//	return 0;
+//}
+
+float g_modelScale(1.0f);
+
+static int setModelScale(lua_State* L)
 {
-	if( lua_gettop(L) < 1 )
-	{
-		lua_pushstring(L, "getVtx expects 1 parameter (vertex index)");
-		lua_error(L);
+  g_modelScale = lua_tonumber(L, -1);
 
-		return 1; // i guess?
-	}
+  lua_pop(L, 1);
 
-	int indx = lua_tointeger(L, -1);
-	
-	if( indx < 0 || indx >= g_points.size() )
-	{
-		lua_pushstring(L, "Supplied vertex index value was invalid");
-		lua_error(L);
+  return 0;
+}
 
-		return 1;
-	}
-	/*
-	const Vec2f &point = g_points.at( indx ).first;
+static int setModelTranslation(lua_State* L)
+{
+  g_midPoint.z = lua_tonumber(L, -1);
+  g_midPoint.y = lua_tonumber(L, -2);
+  g_midPoint.x = lua_tonumber(L, -3);
 
-	lua_pushnumber( L, point.x );
-	lua_pushnumber( L, point.y );
+  lua_pop(L, 3);
 
-	return 2;
-	*/
-	return 0;
+  return 0;
 }
 
 static int dataSize( lua_State *L )
@@ -416,8 +447,8 @@ bool LuaExposeSetup()
 
 	// -- Output specific
 	lua.setHook("rotateScene",	setRotations );
-	lua.setHook("pushVtx",		pushVertex );
-	lua.setHook("getVtx",		getVertex );
+	//lua.setHook("pushVtx",		pushVertex );
+	//lua.setHook("getVtx",		getVertex );
 	
 	// (colours)
 	lua.setHook("pointColour",	setColour<colPoints> );
@@ -430,6 +461,9 @@ bool LuaExposeSetup()
 	// -- Render specific
 	lua.setHook("setFITable",	setTableIndexBuffer );
 	lua.setHook("setVTable",	setVertexBuffer );
+
+  lua.setHook("scale", setModelScale);
+  lua.setHook("move", setModelTranslation);
 
 	setupExposedTypes();
 
@@ -450,8 +484,10 @@ void LuaExposeSetupCleanup()
 		g_file.close();
 
 	lua.destroy();
-	g_points.clear();
-	g_indices.clear();
+  g_modelVerts.clear();
+  g_modelInd.clear();
+
+  g_midPoint = Vec3fZero;
 }
 
 void LuaExposeLoad()
@@ -513,19 +549,24 @@ void LuaExposeLoad()
 			// -- Setup our persistant data buffers
 			// See http://www.opengl.org/sdk/docs/man2/xhtml/glEnableClientState.xml
 
-			if( !( g_indices.empty() ) ) // If we have indices, we can store the points
-			{
-				//glEnableClientState( GL_VERTEX_ARRAY );
-				//glVertexPointer(3, GL_FLOAT, 0, &g_points.at(0) );
-				printf("> Got %i points\n", g_points.size());
+      
+      printf("> Got %i models\n", g_modelInd.size());
 
-				//glEnable( GL_VERTEX_ARRAY );
-				//glVertexPointer( 3, GL_SHORT, 0, &g_indices.at(0) );
-				// Todo: update my gl library so i can use buffers - GL_ARRAY_BUFFER
-			}
-			//else
-				// glDisableClientState( GL_VERTEX_ARRAY );
+      vector<pointList>::iterator vit = g_modelVerts.begin();
 
+      while (vit != g_modelVerts.end())
+      {
+        printf("> Got %i vertices\n", vit->size());
+        vit++;
+      }
+
+      vector<indexList>::iterator iit = g_modelInd.begin();
+
+      while (iit != g_modelInd.end())
+      {
+        printf("> Got %i points\n", iit->size());
+        iit++;
+      }
 		}
 		else
 			printf("WARNING: No input file has been specified\n");
@@ -626,7 +667,7 @@ int main( int argc, char **argv )
 
 	glLoadIdentity();
 
-	
+  g_modelVerts.reserve(10); // 10 models max
 
 	//glGenBuffersARB( 1, &m_nVBOVertices );
 
@@ -683,7 +724,7 @@ public:
 	}	
 };
 
-float g_scaleScalar( 10.0f );
+float g_scaleScalar( 2.0f );
 
 void callbackKeyboard(unsigned char keycode, int, int)
 {
@@ -699,31 +740,29 @@ void callbackKeyboard(unsigned char keycode, int, int)
 	else
 
 	
-	if( keycode == 's' || keycode == 'S' )
-	{
-		printf("> Exporting OBJ..\n");
+	//if( keycode == 's' || keycode == 'S' )
+	//{
+	//	printf("> Exporting OBJ..\n");
 
-		objRenderer obj;
+	//	objRenderer obj;
 
-		for( pointList::const_iterator cit( g_points.begin() );
-			cit != g_points.end();
-			++cit )
-		{
-			obj( *cit );
-		}
-		
-		for( indexList::const_iterator cit( g_indices.begin() );
-			cit != g_indices.end();
-			++cit )
-		{
-			obj( *cit );
-		}
+	//	for( pointList::const_iterator cit( g_points.begin() );
+	//		cit != g_points.end();
+	//		++cit )
+	//	{
+	//		obj( *cit );
+	//	}
+	//	
+	//	for( indexList::const_iterator cit( g_indices.begin() );
+	//		cit != g_indices.end();
+	//		++cit )
+	//	{
+	//		obj( *cit );
+	//	}
 
-		obj.Save();
-	}
-
-	else
-
+	//	obj.Save();
+	//}
+  // else
 	if( keycode == 'u' || keycode == 'U' )
 	{
 		rot_x += 2.0f;
@@ -737,9 +776,9 @@ void callbackKeyboard(unsigned char keycode, int, int)
 	{
 
 		if( keycode == 'q' || keycode == 'Q' )
-			g_scaleScalar += 2.0f;
+			g_scaleScalar += 0.2f;
 		else
-			g_scaleScalar -= 2.0f;
+			g_scaleScalar -= 0.2f;
 
 		glutPostRedisplay();
 	}
@@ -752,12 +791,20 @@ void renderPoint( const Vec3f &p )
 	glEnd();
 }
 
+// hacky, by worky
+int mdl_index = -1;
+
 void renderFace( const index &i )
 {
+  if (mdl_index == -1)
+    return;
+
+  const pointList& pl = g_modelVerts[mdl_index];
+
 	glBegin( GL_TRIANGLES );
-		glVertex3f( g_points.at( i.ia ).x, g_points.at( i.ia ).y, g_points.at( i.ia ).z );
-		glVertex3f( g_points.at( i.ib ).x, g_points.at( i.ib ).y, g_points.at( i.ib ).z );
-		glVertex3f( g_points.at( i.ic ).x, g_points.at( i.ic ).y, g_points.at( i.ic ).z );
+    glVertex3f(pl.at(i.ia).x, pl.at(i.ia).y, pl.at(i.ia).z);
+    glVertex3f(pl.at(i.ib).x, pl.at(i.ib).y, pl.at(i.ib).z);
+    glVertex3f(pl.at(i.ic).x, pl.at(i.ic).y, pl.at(i.ic).z);
 	glEnd();
 }
 
@@ -839,6 +886,11 @@ void callbackDisplay()
 		}
 	}
 
+  glPushMatrix();
+
+  //glScalef(TRIPTHIS(g_modelScale));
+  glTranslatef(g_midPoint.x, g_midPoint.y, g_midPoint.z);
+
 	/*
 	if( g_indices.size() > 0 )
 	{
@@ -848,20 +900,32 @@ void callbackDisplay()
 	else
 		*/
 	{
-		for_each
-		(
-			g_indices.begin(),
-			g_indices.end(),
-			renderFace
-		);
-		/*
-		for_each
-		(
-			g_points.begin(),
-			g_points.end(),
-			renderPoint
-		);
-		*/
+    vector<indexList>::iterator it = g_modelInd.begin();
+    int i = 0;
+    while (it != g_modelInd.end())
+    {
+      if (i >= g_modelVerts.size())
+        break;
+
+      if (g_modelVerts[i].empty())
+        break;
+
+      mdl_index = i;
+
+      glPushMatrix();
+
+      for_each
+        (
+        it->begin(),
+        it->end(),
+        renderFace
+        );
+
+      glPopMatrix();
+
+      i++;
+      it++;
+    }
 	}
 	
 	if( g_renderType == RENDERAS_MIXED )
@@ -869,13 +933,31 @@ void callbackDisplay()
 		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 		glColor3f( colLines.x, colLines.y, colLines.z );
 
-		for_each
-		(
-			g_indices.begin(),
-			g_indices.end(),
-			renderFace
-		);
+    vector<indexList>::iterator it = g_modelInd.begin();
+
+    int i = 0;
+    while (it != g_modelInd.end())
+    {
+      if (i >= g_modelVerts.size())
+        break;
+
+      if (g_modelVerts[i].empty())
+        break;
+
+      mdl_index = i;
+      for_each
+        (
+        it->begin(),
+        it->end(),
+        renderFace
+        );
+
+      i++;
+      it++;
+    }
 	}
+
+  glPopMatrix();
 
 	glPopMatrix();
 
